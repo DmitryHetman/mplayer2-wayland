@@ -2014,9 +2014,6 @@ static int create_window_wayland(struct MPGLContext *ctx, uint32_t d_width,
 
         wl.window->egl_window = wl_egl_window_create(wl.window->surface,
                 wl.window->width, wl.window->height);
-
-        wl.window->x = wl.display->pos_x;
-        wl.window->y = wl.display->pos_y;
     }
 
     return 1;
