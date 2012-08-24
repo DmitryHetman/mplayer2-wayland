@@ -2320,21 +2320,6 @@ struct vo_wl_private {
     } egl;
 };
 
-static void appendstr(char **dst, const char *str)
-{
-    int newsize;
-    char *newstr;
-    if (!str)
-        return;
-    newsize = strlen(*dst) + 1 + strlen(str) + 1;
-    newstr = realloc(*dst, newsize);
-    if (!newstr)
-        return;
-    *dst = newstr;
-    strcat(*dst, " ");
-    strcat(*dst, str);
-}
-
 static int init_wayland(struct vo *vo)
 {
     wl.vo = vo;
@@ -2376,7 +2361,7 @@ static int setGlWindow_wayland(MPGLContext *ctx)
     GL *gl = ctx->gl;
     void *(*getProcAddress)(const GLubyte *);
     const char *(*eglExtStr)(EGLDisplay *, int);
-    char *eglstr = strdup("");
+    const char *eglstr = "";
 
     EGLint config_attribs[] = {
         EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
@@ -2425,8 +2410,7 @@ static int setGlWindow_wayland(MPGLContext *ctx)
 
     eglExtStr = getdladdr("eglQueryString");
     if (eglExtStr)
-        appendstr(&eglstr,
-                eglExtStr(wl.window->private->egl.dpy, EGL_EXTENSIONS));
+        eglstr = eglExtStr(wl.window->private->egl.dpy, EGL_EXTENSIONS);
 
     getFunctions(gl, (void *(*)(const GLubyte*))eglGetProcAddress, eglstr);
     if (!gl->BindProgram)
