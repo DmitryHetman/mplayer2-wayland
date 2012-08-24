@@ -84,20 +84,17 @@ static void output_handle_geometry (void *data, struct wl_output *wl_output,
         int32_t subpixel, const char *make, const char *model,
         int32_t transform)
 {
-    struct vo_wl_display *d = data;
-
-    d->pos_x = x;
-    d->pos_y = y;
 }
 
 static void output_handle_mode (void *data, struct wl_output *wl_output,
         uint32_t flags, int32_t width, int32_t height, int32_t refresh)
 {
     struct vo_wl_display *d = data;
-
-    d->output_height = height;
-    d->output_width = width;
-    d->mode_received = 1;
+    if ((flags & WL_OUTPUT_MODE_PREFERRED) == WL_OUTPUT_MODE_PREFERRED) {
+        d->output_height = height;
+        d->output_width = width;
+        d->mode_received = 1;
+    }
 }
 
 const struct wl_output_listener output_listener = {
@@ -338,9 +335,9 @@ static void pointer_handle_axis(void *data, struct wl_pointer *pointer,
 
     if (axis == WL_POINTER_AXIS_VERTICAL_SCROLL) {
         if (value > 0)
-	        mplayer_put_key(wl->vo->key_fifo, MOUSE_BTN3);
+            mplayer_put_key(wl->vo->key_fifo, MOUSE_BTN3);
         if (value < 0)
-	        mplayer_put_key(wl->vo->key_fifo, MOUSE_BTN4);
+            mplayer_put_key(wl->vo->key_fifo, MOUSE_BTN4);
     }
 }
 

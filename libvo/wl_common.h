@@ -52,9 +52,6 @@ struct vo_wl_display {
     uint32_t output_width;
     uint32_t output_height;
 
-    uint32_t pos_x;
-    uint32_t pos_y;
-
     uint32_t formats;
     uint32_t mask;
 };
@@ -64,9 +61,6 @@ struct vo_wl_window {
     uint32_t height;
     uint32_t p_width;
     uint32_t p_height;
-
-    uint32_t x;
-    uint32_t y;
 
     struct wl_surface *surface;
     struct wl_shell_surface *shell_surface;
