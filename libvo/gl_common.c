@@ -2424,8 +2424,9 @@ static void update_xinerama_info_wayland(struct vo * vo)
 
     vo_wl_priv_init(&wl);
 
-    while (!wl.display->mode_received)
-        wl_display_roundtrip(wl.display->display);
+    wl_display_roundtrip(wl.display->display);
+    if (!wl.display->mode_received)
+        mp_msg(MSGT_VO, MSGL_ERR, "[wl] no mode\n");
 
     opts->vo_screenwidth = wl.display->output_width;
     opts->vo_screenheight = wl.display->output_height;
