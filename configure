@@ -3347,32 +3347,20 @@ depends_on_application_services(){
 
 fi #if darwin
 
-echocheck "Wayland headers presence"
-  _wayland_headers="no"
-  res_comment="check if the dev(el) packages are installed"
+echocheck "Wayland"
   for I in $(echo $extra_cflags | sed s/-I//g) /usr/include ; do
     if test -f "$I/wayland-client.h" ; then
       _wayland_headers="yes"
-      res_comment=""
       break
     fi
   done
-echores "$_wayland_headers"
-
-echocheck "Wayland"
-if test "$_wayland" = auto && test "$_wayland_headers" = yes ; then
-  pkg_config_add "wayland-client" && _wayland="yes"
-fi
-if test "$_wayland" = yes ; then
-  def_wayland='#define CONFIG_WAYLAND'
-  vomodules="wayland $vomodules"
-  libs_mplayer="$libs_mplayer -lwayland-client -lxkbcommon"
-  #pkg_config_add doesn't work
+if test "$_wayland" = auto || test "$_wayland" = yes && test "$_wayland_headers" = yes ; then
+  pkg_config_add 'wayland-client' && pkg_config_add 'wayland-egl' && \
+  pkg_config_add 'xkbcommon' && _wayland="yes"
+  res_comment=""
 else
   _wayland="no"
-  def_wayland="#undef CONFIG_WAYLAND"
-  novomodules="wayland $novomodules"
-  res_comment="check if the dev(el) packages are installed"
+  res_comment=""
 fi
 echores "$_wayland"
 
@@ -3894,7 +3882,7 @@ EOF
   if test "$_wayland" = yes ; then
     _gl=yes
     _gl_wayland=yes
-    libs_mplayer="$libs_mplayer -lGL -lEGL -lwayland-egl"
+    libs_mplayer="$libs_mplayer -lGL -lEGL"
   fi
   if win32 && cc_check -DGL_WIN32 -lopengl32 ; then
     _gl=yes
