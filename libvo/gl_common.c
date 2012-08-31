@@ -2304,7 +2304,7 @@ static void swapGlBuffers_x11(MPGLContext *ctx)
 #include <assert.h>
 #include "wl_common.h"
 
-static struct wl_priv wl = {NULL, NULL, NULL, NULL};
+struct wl_priv wl = {NULL, NULL, NULL, NULL};
     /* New wl_common requires to preset it
         to zero, but that is a bit too hackish for my taste.
         Maybe there is another way to get around the fact that mplayer calls
@@ -2336,6 +2336,9 @@ static int create_window_wayland(struct MPGLContext *ctx, uint32_t d_width,
 {
     wl.window->width = d_width;
     wl.window->height = d_height;
+
+    if (ctx->vo->opts->fullscreen)
+        vo_wl_priv_fullscreen(&wl);
 
     if (!wl.window)
         return 0;
