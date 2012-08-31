@@ -458,6 +458,8 @@ static void destroy_display (struct wl_priv *wl)
     wl_display_disconnect(wl->display->display);
     free(wl->display);
     wl->display = NULL;
+    
+    vo_fs = VO_FALSE;
 }
 
 static void create_window (struct wl_priv *wl, int width, int height)
