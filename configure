@@ -3855,13 +3855,14 @@ depends_on_application_services(){
 fi #if darwin
 
 echocheck "Wayland"
-  for I in $(echo $extra_cflags | sed s/-I//g) /usr/include ; do
+  for I in $(echo $extra_cflags | sed s/-I//g) /usr/include \
+           $($_pkg_config --cflags wayland-client | sed s/-I//g) ; do
     if test -f "$I/wayland-client.h" ; then
       _wayland_headers="yes"
       break
     fi
   done
-if test "$_wayland" = auto || test "$_wayland" = yes && test "$_wayland_headers" = yes ; then
+if test "$_wayland" != no && test "$_wayland_headers" = yes ; then
   pkg_config_add 'wayland-client' && pkg_config_add 'wayland-egl' && \
   pkg_config_add 'xkbcommon' && _wayland="yes"
   res_comment=""
