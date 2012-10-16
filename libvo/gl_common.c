@@ -2326,7 +2326,7 @@ static int init_wayland(struct vo *vo)
     return vo_wl_priv_init(&wl);
 }
 
-static int uninit_wayland(struct vo *vo)
+static void uninit_wayland(struct vo *vo)
 {
     vo_wl_priv_uninit(&wl);
 }
@@ -2412,11 +2412,11 @@ static int setGlWindow_wayland(MPGLContext *ctx)
     if (eglExtStr)
         eglstr = eglExtStr(wl.window->private->egl.dpy, EGL_EXTENSIONS);
 
-    getFunctions(gl, (void *(*)(const GLubyte*))eglGetProcAddress, eglstr);
+    getFunctions(gl, (void *(*)(const GLubyte*))eglGetProcAddress, eglstr, false);
     if (!gl->BindProgram)
-        getFunctions(gl, NULL, eglstr);
+        getFunctions(gl, NULL, eglstr, false);
 
-    wl_display_roundtrip(wl.display->display);
+    wl_display_dispatch(wl.display->display);
 
     return SET_WINDOW_OK;
 }
