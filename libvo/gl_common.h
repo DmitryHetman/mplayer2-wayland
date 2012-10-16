@@ -41,6 +41,14 @@
 #endif
 #include <OpenGL/glext.h>
 #else
+
+#ifdef CONFIG_GL_WAYLAND
+#include "wl_common.h"
+#include <wayland-egl.h>
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
+#endif
+
 #include <GL/gl.h>
 #include <GL/glext.h>
 #endif
@@ -172,6 +180,7 @@ enum MPGLType {
     GLTYPE_W32,
     GLTYPE_X11,
     GLTYPE_SDL,
+    GLTYPE_WAYLAND,
 };
 
 enum {

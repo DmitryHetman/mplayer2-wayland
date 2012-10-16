@@ -2300,6 +2300,187 @@ static void swapGlBuffers_x11(MPGLContext *ctx)
 }
 #endif
 
+#ifdef CONFIG_GL_WAYLAND
+#include <assert.h>
+#include "wl_common.h"
+
+static struct wl_priv wl = {NULL, NULL, NULL, NULL};
+    /* New wl_common requires to preset it
+        to zero, but that is a bit too hackish for my taste.
+        Maybe there is another way to get around the fact that mplayer calls
+        vo_init two times. */
+
+struct vo_wl_private {
+    EGLSurface egl_surface;
+
+    struct {
+        EGLDisplay dpy;
+        EGLContext ctx;
+        EGLConfig conf;
+    } egl;
+};
+
+static void appendstr(char **dst, const char *str)
+{
+    int newsize;
+    char *newstr;
+    if (!str)
+        return;
+    newsize = strlen(*dst) + 1 + strlen(str) + 1;
+    newstr = realloc(*dst, newsize);
+    if (!newstr)
+        return;
+    *dst = newstr;
+    strcat(*dst, " ");
+    strcat(*dst, str);
+}
+
+static int init_wayland(struct vo *vo)
+{
+    wl.vo = vo;
+    return vo_wl_priv_init(&wl);
+}
+
+static int uninit_wayland(struct vo *vo)
+{
+    vo_wl_priv_uninit(&wl);
+}
+
+static int create_window_wayland(struct MPGLContext *ctx, uint32_t d_width,
+                                 uint32_t d_height, uint32_t flags)
+{
+    wl.window->width = d_width;
+    wl.window->height = d_height;
+
+    if (!wl.window)
+        return 0;
+
+    if (!wl.window->private) {
+        wl.window->private = malloc(sizeof(struct vo_wl_private));
+
+        wl.window->private->egl.dpy = eglGetDisplay(wl.display->display);
+        assert(wl.window->private->egl.dpy);
+
+        wl.window->egl_window = wl_egl_window_create(wl.window->surface,
+                wl.window->width, wl.window->height);
+
+        wl.window->x = wl.display->pos_x;
+        wl.window->y = wl.display->pos_y;
+    }
+
+    return 1;
+}
+
+static int setGlWindow_wayland(MPGLContext *ctx)
+{
+    GL *gl = ctx->gl;
+    void *(*getProcAddress)(const GLubyte *);
+    const char *(*eglExtStr)(EGLDisplay *, int);
+    char *eglstr = strdup("");
+
+    EGLint config_attribs[] = {
+        EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+        EGL_RED_SIZE, 1,
+        EGL_GREEN_SIZE, 1,
+        EGL_BLUE_SIZE, 1,
+        EGL_ALPHA_SIZE, 0,
+        EGL_DEPTH_SIZE, 1,
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
+        EGL_NONE
+    };
+
+    EGLint major, minor, n;
+    EGLBoolean ret;
+
+    ret = eglInitialize(wl.window->private->egl.dpy, &major, &minor);
+    assert(ret == EGL_TRUE);
+
+    ret = eglBindAPI(EGL_OPENGL_API);
+    assert(ret == EGL_TRUE);
+
+    ret = eglChooseConfig(wl.window->private->egl.dpy, config_attribs,
+                  &wl.window->private->egl.conf, 1, &n);
+    assert(ret && n == 1);
+
+    wl.window->private->egl.ctx = eglCreateContext(
+            wl.window->private->egl.dpy,
+            wl.window->private->egl.conf,
+            EGL_NO_CONTEXT, NULL);
+    assert(wl.window->private->egl.ctx);
+
+    wl.window->private->egl_surface = eglCreateWindowSurface(
+            wl.window->private->egl.dpy, wl.window->private->egl.conf,
+            wl.window->egl_window, NULL);
+
+    ret = eglMakeCurrent(wl.window->private->egl.dpy,
+            wl.window->private->egl_surface,
+            wl.window->private->egl_surface,
+            wl.window->private->egl.ctx);
+
+    assert(ret == EGL_TRUE);
+
+    getProcAddress = getdladdr("eglGetProcAddress");
+    if (!getProcAddress)
+        mp_msg(MSGT_VO, MSGL_WARN, "[egl] No eglGetProcAdress");
+
+    eglExtStr = getdladdr("eglQueryString");
+    if (eglExtStr)
+        appendstr(&eglstr,
+                eglExtStr(wl.window->private->egl.dpy, EGL_EXTENSIONS));
+
+    getFunctions(gl, (void *(*)(const GLubyte*))eglGetProcAddress, eglstr);
+    if (!gl->BindProgram)
+        getFunctions(gl, NULL, eglstr);
+
+    wl_display_roundtrip(wl.display->display);
+
+    return SET_WINDOW_OK;
+}
+
+static void update_xinerama_info_wayland(struct vo * vo)
+{
+    struct MPOpts *opts = vo->opts;
+
+    vo_wl_priv_init(&wl);
+
+    while (!wl.display->mode_received)
+        wl_display_roundtrip(wl.display->display);
+
+    opts->vo_screenwidth = wl.display->output_width;
+    opts->vo_screenheight = wl.display->output_height;
+
+    aspect_save_screenres(vo, opts->vo_screenwidth, opts->vo_screenheight);
+}
+
+static void releaseGlContext_wayland(MPGLContext *ctx)
+{
+    GL *gl = ctx->gl;
+    gl->Finish();
+    eglMakeCurrent(wl.window->private->egl.dpy, NULL, NULL, EGL_NO_CONTEXT);
+    eglDestroyContext(wl.window->private->egl.dpy,
+            wl.window->private->egl.ctx);
+    eglTerminate(wl.window->private->egl.dpy);
+}
+
+static void swapGlBuffers_wayland(MPGLContext *ctx)
+{
+    eglSwapBuffers(wl.window->private->egl.dpy,
+            wl.window->private->egl_surface);
+    wl_display_flush(wl.display->display);
+}
+
+void fullscreen_wayland(struct vo *vo)
+{
+    vo_wl_priv_fullscreen(&wl);
+}
+
+int check_events_wayland(struct vo *vo)
+{
+    return vo_wl_priv_check_events(&wl);
+}
+
+#endif
+
 #ifdef CONFIG_GL_SDL
 #include "sdl_common.h"
 
@@ -2365,12 +2546,14 @@ static struct backend backends[] = {
     {"win", GLTYPE_W32},
     {"x11", GLTYPE_X11},
     {"sdl", GLTYPE_SDL},
+    {"wayland", GLTYPE_WAYLAND},
     // mplayer-svn aliases (note that mplayer-svn couples these with the numeric
     // values of the internal GLTYPE_* constants)
     {"-1", GLTYPE_AUTO},
     { "0", GLTYPE_W32},
     { "1", GLTYPE_X11},
     { "2", GLTYPE_SDL},
+    { "3", GLTYPE_WAYLAND },
 
     {0}
 };
@@ -2395,6 +2578,9 @@ MPGLContext *init_mpglcontext(enum MPGLType type, struct vo *vo)
         if (ctx)
             return ctx;
         ctx = init_mpglcontext(GLTYPE_X11, vo);
+        if (ctx)
+            return ctx;
+        ctx = init_mpglcontext(GLTYPE_WAYLAND, vo);
         if (ctx)
             return ctx;
         return init_mpglcontext(GLTYPE_SDL, vo);
@@ -2457,6 +2643,22 @@ MPGLContext *init_mpglcontext(enum MPGLType type, struct vo *vo)
         ctx->ontop = vo_x11_ontop;
         ctx->vo_uninit = vo_x11_uninit;
         if (vo_init(vo))
+            return ctx;
+        break;
+#endif
+#ifdef CONFIG_GL_WAYLAND
+    case GLTYPE_WAYLAND:
+        ctx->create_window = create_window_wayland;
+        ctx->setGlWindow = setGlWindow_wayland;
+        ctx->releaseGlContext = releaseGlContext_wayland;
+        ctx->swapGlBuffers = swapGlBuffers_wayland;
+        ctx->update_xinerama_info = update_xinerama_info_wayland;
+        ctx->border = vo_wl_border;
+        ctx->check_events = check_events_wayland;
+        ctx->fullscreen = fullscreen_wayland;
+        ctx->ontop = vo_wl_ontop;
+        ctx->vo_uninit = uninit_wayland;
+        if (init_wayland(vo))
             return ctx;
         break;
 #endif
