@@ -386,30 +386,36 @@ const struct wl_shm_listener shm_listener = {
     shm_handle_format
 };
 
-static void display_handle_global (struct wl_display *display, uint32_t id,
+static void registry_handle_global (struct wl_registry *registry, uint32_t id,
         const char *interface, uint32_t version, void *data)
 {
     struct wl_priv *wl = data;
     struct vo_wl_display *d = wl->display;
     if (strcmp(interface, "wl_compositor") == 0) {
-        d->compositor = wl_display_bind(display, id, &wl_compositor_interface);
+        d->compositor = wl_registry_bind(d->registry, id,
+                &wl_compositor_interface, 1);
     }
     else if (strcmp(interface, "wl_shell") == 0) {
-        d->shell = wl_display_bind(display, id, &wl_shell_interface);
+        d->shell = wl_registry_bind(d->registry, id, &wl_shell_interface, 1);
     }
     else if (strcmp(interface, "wl_shm") == 0) {
-        d->shm = wl_display_bind(display, id, &wl_shm_interface);
+        d->shm = wl_registry_bind(d->registry, id, &wl_shm_interface, 1);
         wl_shm_add_listener(d->shm, &shm_listener, d);
     }
     else if (strcmp(interface, "wl_output") == 0) {
-        d->output = wl_display_bind(display, id, &wl_output_interface);
+        d->output = wl_registry_bind(d->registry, id, &wl_output_interface, 1);
         wl_output_add_listener(d->output, &output_listener, d);
     }
     else if (strcmp(interface, "wl_seat") == 0) {
-        wl->input->seat = wl_display_bind(display, id, &wl_seat_interface);
+        wl->input->seat = wl_registry_bind(d->registry, id,
+                &wl_seat_interface, 1);
         wl_seat_add_listener(wl->input->seat, &seat_listener, wl);
     }
 }
+
+static const struct wl_registry_listener registry_listener = {
+    registry_handle_global
+};
 
 static int event_mask_update (uint32_t mask, void *data)
 {
@@ -427,8 +433,10 @@ static void create_display (struct wl_priv *wl)
     wl->display->display = wl_display_connect(NULL);
 
     assert(wl->display->display);
-    wl_display_add_global_listener (wl->display->display,
-            display_handle_global, wl);
+    wl->display->registry = wl_display_get_registry(wl->display->display);
+    wl_registry_add_listener(wl->display->registry, &registry_listener,
+            wl->display->display);
+
 
     wl->display->mode_received = 0;
     wl->display->formats = 0;
@@ -436,8 +444,7 @@ static void create_display (struct wl_priv *wl)
     wl->display->shm = 0;
     wl->window = NULL;
 
-    wl_display_get_fd(wl->display->display, event_mask_update, wl->display);
-    wl_display_roundtrip(wl->display->display);
+    wl_display_dispatch(wl->display->display);
 }
 
 static void destroy_display (struct wl_priv *wl)

@@ -43,6 +43,7 @@ struct vo_wl_private;
 
 struct vo_wl_display {
     struct wl_display *display;
+    struct wl_registry *registry;
     struct wl_compositor *compositor;
     struct wl_shell *shell;
     struct wl_shm *shm;
