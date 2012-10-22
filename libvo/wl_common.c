@@ -386,8 +386,8 @@ const struct wl_shm_listener shm_listener = {
     shm_handle_format
 };
 
-static void registry_handle_global (struct wl_registry *registry, uint32_t id,
-        const char *interface, uint32_t version, void *data)
+static void registry_handle_global (void *data, struct wl_registry *registry,
+        uint32_t id, const char *interface, uint32_t version)
 {
     struct wl_priv *wl = data;
     struct vo_wl_display *d = wl->display;
@@ -413,16 +413,15 @@ static void registry_handle_global (struct wl_registry *registry, uint32_t id,
     }
 }
 
-static const struct wl_registry_listener registry_listener = {
-    registry_handle_global
-};
-
-static int event_mask_update (uint32_t mask, void *data)
+static void registry_handle_global_remove (void *data,
+        struct wl_registry *registry, uint32_t id)
 {
-    struct vo_wl_display *d = data;
-    d->mask = mask;
-    return 0;
 }
+
+static const struct wl_registry_listener registry_listener = {
+    registry_handle_global,
+    registry_handle_global_remove
+};
 
 static void create_display (struct wl_priv *wl)
 {
@@ -435,7 +434,7 @@ static void create_display (struct wl_priv *wl)
     assert(wl->display->display);
     wl->display->registry = wl_display_get_registry(wl->display->display);
     wl_registry_add_listener(wl->display->registry, &registry_listener,
-            wl->display->display);
+            wl);
 
 
     wl->display->mode_received = 0;
