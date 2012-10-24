@@ -335,9 +335,9 @@ static void pointer_handle_axis(void *data, struct wl_pointer *pointer,
 
     if (axis == WL_POINTER_AXIS_VERTICAL_SCROLL) {
         if (value > 0)
-            mplayer_put_key(wl->vo->key_fifo, MOUSE_BTN3);
-        if (value < 0)
             mplayer_put_key(wl->vo->key_fifo, MOUSE_BTN4);
+        if (value < 0)
+            mplayer_put_key(wl->vo->key_fifo, MOUSE_BTN3);
     }
 }
 
