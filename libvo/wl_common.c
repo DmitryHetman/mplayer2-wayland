@@ -47,10 +47,6 @@
 #include "input/input.h"
 #include "input/keycodes.h"
 
-#ifdef CONFIG_GL_WAYLAND
-    #include <wayland-egl.h>
-#endif
-
 static void create_display (struct wl_priv *wl);
 static void create_window (struct wl_priv *wl, int width, int height);
 
@@ -475,11 +471,7 @@ static void create_window (struct wl_priv *wl, int width, int height)
 
     wl->window = malloc(sizeof(struct vo_wl_window));
     wl->window->private = NULL;
-
-#ifdef CONFIG_GL_WAYLAND
     wl->window->egl_window = NULL;
-#endif
-
     wl->window->callback = NULL;
     wl->window->width = width;
     wl->window->height = height;
@@ -499,10 +491,8 @@ static void destroy_window (struct wl_priv *wl)
     if (wl->window->callback)
         wl_callback_destroy(wl->window->callback);
 
-#ifdef CONFIG_GL_WAYLAND
     if (wl->window->egl_window)
         wl_egl_window_destroy(wl->window->egl_window);
-#endif
 
     wl_shell_surface_destroy(wl->window->shell_surface);
     wl_surface_destroy(wl->window->surface);

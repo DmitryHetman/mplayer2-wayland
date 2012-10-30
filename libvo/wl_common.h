@@ -21,6 +21,7 @@
 
 #include <stdint.h>
 #include <wayland-client.h>
+#include <wayland-egl.h>
 #include <xkbcommon/xkbcommon.h>
 
 #include "config.h"
@@ -68,9 +69,7 @@ struct vo_wl_window {
     struct wl_buffer *buffer;
     struct wl_callback *callback;
 
-#ifdef CONFIG_GL_WAYLAND
     struct wl_egl_window *egl_window;
-#endif
 
     enum vo_wl_window_type type; /* is fullscreen */
     uint8_t redraw;
