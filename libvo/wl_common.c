@@ -50,6 +50,9 @@
 static void create_display (struct wl_priv *wl);
 static void create_window (struct wl_priv *wl, int width, int height);
 
+static void hide_cursor (struct vo_wl_display * display);
+static void show_cursor (struct vo_wl_display * display);
+
 /* SHELL SURFACE LISTENER  */
 static void ssurface_handle_ping (void *data,
         struct wl_shell_surface *shell_surface, uint32_t serial)
@@ -306,22 +309,14 @@ static void pointer_handle_enter(void *data, struct wl_pointer *pointer,
     struct wl_priv *wl = data;
     struct vo_wl_display * display = wl->display;
 
-    struct wl_buffer *buffer;
-    struct wl_cursor_image *image;
+    display->cursor.serial = serial;
+    display->cursor.pointer = pointer;
 
     if (wl->window->type == TYPE_FULLSCREEN)
-        wl_pointer_set_cursor(pointer, serial, NULL, 0, 0);
+        hide_cursor(display);
     else if (display->cursor.default_cursor) {
-        image = display->cursor.default_cursor->images[0];
-        buffer = wl_cursor_image_get_buffer(image);
-        wl_pointer_set_cursor(pointer, serial, display->cursor.surface,
-                image->hotspot_x, image->hotspot_y);
-        wl_surface_attach(display->cursor.surface, buffer, 0, 0);
-        wl_surface_damage(display->cursor.surface, 0, 0,
-                image->width, image->height);
-        wl_surface_commit(display->cursor.surface);
+        show_cursor(display);
     }
-
 }
 
 static void pointer_handle_leave(void *data, struct wl_pointer *pointer,
@@ -332,6 +327,22 @@ static void pointer_handle_leave(void *data, struct wl_pointer *pointer,
 static void pointer_handle_motion(void *data, struct wl_pointer *pointer,
         uint32_t time, wl_fixed_t sx_w, wl_fixed_t sy_w)
 {
+    struct wl_priv *wl = data;
+    struct vo_wl_display * display = wl->display;
+
+    display->cursor.pointer = pointer;
+
+    struct itimerspec its;
+
+    if (wl->window->type == TYPE_FULLSCREEN) {
+        show_cursor(display);
+
+        its.it_interval.tv_sec = 1;
+        its.it_interval.tv_nsec = 0;
+        its.it_value.tv_sec = 3;
+        its.it_value.tv_nsec = 0;
+        timerfd_settime(display->cursor.timer_fd, 0, &its, NULL);
+    }
 }
 
 static void pointer_handle_button(void *data, struct wl_pointer *pointer,
@@ -441,6 +452,30 @@ static const struct wl_registry_listener registry_listener = {
     registry_handle_global_remove
 };
 
+
+/*** ----- ***/
+
+static void hide_cursor (struct vo_wl_display *display)
+{
+    wl_pointer_set_cursor(display->cursor.pointer, display->cursor.serial,
+            NULL, 0, 0);
+}
+
+static void show_cursor (struct vo_wl_display *display)
+{
+    struct wl_buffer *buffer;
+    struct wl_cursor_image *image;
+
+    image = display->cursor.default_cursor->images[0];
+    buffer = wl_cursor_image_get_buffer(image);
+    wl_pointer_set_cursor(display->cursor.pointer, display->cursor.serial,
+            display->cursor.surface, image->hotspot_x, image->hotspot_y);
+    wl_surface_attach(display->cursor.surface, buffer, 0, 0);
+    wl_surface_damage(display->cursor.surface, 0, 0,
+            image->width, image->height);
+    wl_surface_commit(display->cursor.surface);
+}
+
 static void create_display (struct wl_priv *wl)
 {
     if (wl->display)
@@ -463,10 +498,14 @@ static void create_display (struct wl_priv *wl)
 
     wl->display->cursor.surface =
         wl_compositor_create_surface(wl->display->compositor);
+
+    wl->display->cursor.timer_fd = timerfd_create(CLOCK_MONOTONIC,
+            TFD_CLOEXEC | TFD_NONBLOCK);
 }
 
 static void destroy_display (struct wl_priv *wl)
 {
+    close(wl->display->cursor.timer_fd);
     wl_surface_destroy(wl->display->cursor.surface);
 
     if (wl->display->cursor.theme)
@@ -615,12 +654,16 @@ void vo_wl_priv_fullscreen (struct wl_priv *wl)
                 0, NULL);
         wl->window->type = TYPE_FULLSCREEN;
         vo_fs = VO_TRUE;
+
+        hide_cursor(wl->display);
     } else {
         wl_shell_surface_set_toplevel(wl->window->shell_surface);
         wl->window->width = wl->window->p_width;
         wl->window->height = wl->window->p_height;
         wl->window->type = TYPE_TOPLEVEL;
         vo_fs = VO_FALSE;
+
+        show_cursor(wl->display);
     }
 }
 
@@ -640,6 +683,11 @@ int vo_wl_priv_check_events (struct wl_priv *wl)
     if (read(wl->input->repeat.timer_fd, &exp, sizeof exp) == sizeof exp) {
         keyboard_handle_key(wl, wl->input->keyboard, 0, wl->input->repeat.time,
                 wl->input->repeat.key, WL_KEYBOARD_KEY_STATE_PRESSED);
+    }
+
+    if (wl->window->type == TYPE_FULLSCREEN && read(wl->display->cursor.timer_fd,
+                &exp, sizeof exp) == sizeof exp) {
+        hide_cursor(wl->display);
     }
 
     ret = wl->input->events;

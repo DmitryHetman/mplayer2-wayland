@@ -55,6 +55,11 @@ struct vo_wl_display {
         struct wl_cursor *default_cursor;
         struct wl_cursor_theme *theme;
         struct wl_surface *surface;
+
+        /* save timer and pointer for fading out */
+        struct wl_pointer *pointer;
+        uint32_t serial;
+        int timer_fd;
     } cursor;
 
     int mode_received;
