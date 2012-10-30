@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include <wayland-client.h>
 #include <wayland-egl.h>
+#include <wayland-cursor.h>
 #include <xkbcommon/xkbcommon.h>
 
 #include "config.h"
@@ -47,8 +48,14 @@ struct vo_wl_display {
     struct wl_registry *registry;
     struct wl_compositor *compositor;
     struct wl_shell *shell;
-    struct wl_shm *shm;
     struct wl_output *output;
+
+    struct {
+        struct wl_shm *shm;
+        struct wl_cursor *default_cursor;
+        struct wl_cursor_theme *theme;
+        struct wl_surface *surface;
+    } cursor;
 
     int mode_received;
     uint32_t output_width;

@@ -303,6 +303,25 @@ static void pointer_handle_enter(void *data, struct wl_pointer *pointer,
         uint32_t serial, struct wl_surface *surface,
         wl_fixed_t sx_w, wl_fixed_t sy_w)
 {
+    struct wl_priv *wl = data;
+    struct vo_wl_display * display = wl->display;
+
+    struct wl_buffer *buffer;
+    struct wl_cursor_image *image;
+
+    if (wl->window->type == TYPE_FULLSCREEN)
+        wl_pointer_set_cursor(pointer, serial, NULL, 0, 0);
+    else if (display->cursor.default_cursor) {
+        image = display->cursor.default_cursor->images[0];
+        buffer = wl_cursor_image_get_buffer(image);
+        wl_pointer_set_cursor(pointer, serial, display->cursor.surface,
+                image->hotspot_x, image->hotspot_y);
+        wl_surface_attach(display->cursor.surface, buffer, 0, 0);
+        wl_surface_damage(display->cursor.surface, 0, 0,
+                image->width, image->height);
+        wl_surface_commit(display->cursor.surface);
+    }
+
 }
 
 static void pointer_handle_leave(void *data, struct wl_pointer *pointer,
@@ -395,8 +414,11 @@ static void registry_handle_global (void *data, struct wl_registry *registry,
         d->shell = wl_registry_bind(d->registry, id, &wl_shell_interface, 1);
     }
     else if (strcmp(interface, "wl_shm") == 0) {
-        d->shm = wl_registry_bind(d->registry, id, &wl_shm_interface, 1);
-        wl_shm_add_listener(d->shm, &shm_listener, d);
+        d->cursor.shm = wl_registry_bind(d->registry, id, &wl_shm_interface, 1);
+        d->cursor.theme = wl_cursor_theme_load(NULL, 32, d->cursor.shm);
+        d->cursor.default_cursor =
+            wl_cursor_theme_get_cursor(d->cursor.theme, "left_ptr");
+        wl_shm_add_listener(d->cursor.shm, &shm_listener, d);
     }
     else if (strcmp(interface, "wl_output") == 0) {
         d->output = wl_registry_bind(d->registry, id, &wl_output_interface, 1);
@@ -432,20 +454,23 @@ static void create_display (struct wl_priv *wl)
     wl_registry_add_listener(wl->display->registry, &registry_listener,
             wl);
 
-
     wl->display->mode_received = 0;
     wl->display->formats = 0;
     wl->display->mask = 0;
-    wl->display->shm = 0;
     wl->window = NULL;
 
     wl_display_dispatch(wl->display->display);
+
+    wl->display->cursor.surface =
+        wl_compositor_create_surface(wl->display->compositor);
 }
 
 static void destroy_display (struct wl_priv *wl)
 {
-    if (wl->display->shm)
-        wl_shm_destroy(wl->display->shm);
+    wl_surface_destroy(wl->display->cursor.surface);
+
+    if (wl->display->cursor.theme)
+        wl_cursor_theme_destroy(wl->display->cursor.theme);
 
     if (wl->display->shell)
         wl_shell_destroy(wl->display->shell);
@@ -460,7 +485,7 @@ static void destroy_display (struct wl_priv *wl)
     wl_display_disconnect(wl->display->display);
     free(wl->display);
     wl->display = NULL;
-    
+
     vo_fs = VO_FALSE;
 }
 

@@ -3357,7 +3357,8 @@ echocheck "Wayland"
   done
 if test "$_wayland" != no && test "$_wayland_headers" = yes ; then
   pkg_config_add 'wayland-client' && pkg_config_add 'wayland-egl' && \
-  pkg_config_add 'xkbcommon' && _wayland="yes"
+  pkg_config_add 'wayland-cursor' && pkg_config_add 'xkbcommon' && \
+    _wayland="yes"
   res_comment=""
 else
   _wayland="no"
