@@ -2304,14 +2304,10 @@ static void swapGlBuffers_x11(MPGLContext *ctx)
 #include <assert.h>
 #include "wl_common.h"
 
-struct wl_priv wl = {NULL, NULL, NULL, NULL};
-    /* New wl_common requires to preset it
-        to zero, but that is a bit too hackish for my taste.
-        Maybe there is another way to get around the fact that mplayer calls
-        vo_init two times. */
-
-struct vo_wl_private {
+struct egl_context {
     EGLSurface egl_surface;
+
+    struct wl_egl_window *egl_window;
 
     struct {
         EGLDisplay dpy;
@@ -2320,37 +2316,23 @@ struct vo_wl_private {
     } egl;
 };
 
-static int init_wayland(struct vo *vo)
-{
-    wl.vo = vo;
-    return vo_wl_priv_init(&wl);
-}
-
-static void uninit_wayland(struct vo *vo)
-{
-    vo_wl_priv_uninit(&wl);
-}
-
 static int create_window_wayland(struct MPGLContext *ctx, uint32_t d_width,
                                  uint32_t d_height, uint32_t flags)
 {
-    wl.window->width = d_width;
-    wl.window->height = d_height;
+    struct egl_context * egl_ctx = ctx->priv;
+    struct vo_wayland_state * wl = ctx->vo->wayland;
 
-    if (ctx->vo->opts->fullscreen)
-        vo_wl_priv_fullscreen(&wl);
+    wl->window->width = d_width;
+    wl->window->height = d_height;
 
-    if (!wl.window)
-        return 0;
+    egl_ctx->egl.dpy = eglGetDisplay(wl->display->display);
+    assert(egl_ctx->egl.dpy);
 
-    if (!wl.window->private) {
-        wl.window->private = malloc(sizeof(struct vo_wl_private));
+    egl_ctx->egl_window = wl_egl_window_create(wl->window->surface,
+        wl->window->width, wl->window->height);
 
-        wl.window->private->egl.dpy = eglGetDisplay(wl.display->display);
-        assert(wl.window->private->egl.dpy);
-
-        wl.window->egl_window = wl_egl_window_create(wl.window->surface,
-                wl.window->width, wl.window->height);
+    if (ctx->vo->opts->fullscreen && wl->window->type != TYPE_FULLSCREEN) {
+        vo_wayland_fullscreen(ctx->vo);
     }
 
     return 1;
@@ -2358,6 +2340,9 @@ static int create_window_wayland(struct MPGLContext *ctx, uint32_t d_width,
 
 static int setGlWindow_wayland(MPGLContext *ctx)
 {
+    struct egl_context *egl_ctx = ctx->priv;
+    struct vo_wayland_state *wl = ctx->vo->wayland;
+
     GL *gl = ctx->gl;
     void *(*getProcAddress)(const GLubyte *);
     const char *(*eglExtStr)(EGLDisplay *, int);
@@ -2377,30 +2362,28 @@ static int setGlWindow_wayland(MPGLContext *ctx)
     EGLint major, minor, n;
     EGLBoolean ret;
 
-    ret = eglInitialize(wl.window->private->egl.dpy, &major, &minor);
+    ret = eglInitialize(egl_ctx->egl.dpy, &major, &minor);
     assert(ret == EGL_TRUE);
 
     ret = eglBindAPI(EGL_OPENGL_API);
     assert(ret == EGL_TRUE);
 
-    ret = eglChooseConfig(wl.window->private->egl.dpy, config_attribs,
-                  &wl.window->private->egl.conf, 1, &n);
+    ret = eglChooseConfig(egl_ctx->egl.dpy, config_attribs,
+            &egl_ctx->egl.conf, 1, &n);
     assert(ret && n == 1);
 
-    wl.window->private->egl.ctx = eglCreateContext(
-            wl.window->private->egl.dpy,
-            wl.window->private->egl.conf,
+    egl_ctx->egl.ctx = eglCreateContext(
+            egl_ctx->egl.dpy,
+            egl_ctx->egl.conf,
             EGL_NO_CONTEXT, NULL);
-    assert(wl.window->private->egl.ctx);
+    assert(egl_ctx->egl.ctx);
 
-    wl.window->private->egl_surface = eglCreateWindowSurface(
-            wl.window->private->egl.dpy, wl.window->private->egl.conf,
-            wl.window->egl_window, NULL);
+    egl_ctx->egl_surface = eglCreateWindowSurface(
+            egl_ctx->egl.dpy, egl_ctx->egl.conf,
+            egl_ctx->egl_window, NULL);
 
-    ret = eglMakeCurrent(wl.window->private->egl.dpy,
-            wl.window->private->egl_surface,
-            wl.window->private->egl_surface,
-            wl.window->private->egl.ctx);
+    ret = eglMakeCurrent(egl_ctx->egl.dpy, egl_ctx->egl_surface,
+            egl_ctx->egl_surface, egl_ctx->egl.ctx);
 
     assert(ret == EGL_TRUE);
 
@@ -2410,58 +2393,34 @@ static int setGlWindow_wayland(MPGLContext *ctx)
 
     eglExtStr = getdladdr("eglQueryString");
     if (eglExtStr)
-        eglstr = eglExtStr(wl.window->private->egl.dpy, EGL_EXTENSIONS);
+        eglstr = eglExtStr(egl_ctx->egl.dpy, EGL_EXTENSIONS);
 
     getFunctions(gl, (void *(*)(const GLubyte*))eglGetProcAddress, eglstr, false);
     if (!gl->BindProgram)
         getFunctions(gl, NULL, eglstr, false);
 
-    wl_display_dispatch(wl.display->display);
+    wl_display_dispatch(wl->display->display);
 
     return SET_WINDOW_OK;
-}
-
-static void update_xinerama_info_wayland(struct vo * vo)
-{
-    struct MPOpts *opts = vo->opts;
-
-    vo_wl_priv_init(&wl);
-
-    wl_display_roundtrip(wl.display->display);
-    if (!wl.display->mode_received)
-        mp_msg(MSGT_VO, MSGL_ERR, "[wl] no mode\n");
-
-    opts->vo_screenwidth = wl.display->output_width;
-    opts->vo_screenheight = wl.display->output_height;
-
-    aspect_save_screenres(vo, opts->vo_screenwidth, opts->vo_screenheight);
 }
 
 static void releaseGlContext_wayland(MPGLContext *ctx)
 {
     GL *gl = ctx->gl;
+    struct egl_context * egl_ctx = ctx->priv;
+
     gl->Finish();
-    eglMakeCurrent(wl.window->private->egl.dpy, NULL, NULL, EGL_NO_CONTEXT);
-    eglDestroyContext(wl.window->private->egl.dpy,
-            wl.window->private->egl.ctx);
-    eglTerminate(wl.window->private->egl.dpy);
+    eglMakeCurrent(egl_ctx->egl.dpy, NULL, NULL, EGL_NO_CONTEXT);
+    eglDestroyContext(egl_ctx->egl.dpy, egl_ctx->egl.ctx);
+    eglTerminate(egl_ctx->egl.dpy);
 }
 
 static void swapGlBuffers_wayland(MPGLContext *ctx)
 {
-    eglSwapBuffers(wl.window->private->egl.dpy,
-            wl.window->private->egl_surface);
-    wl_display_flush(wl.display->display);
-}
-
-void fullscreen_wayland(struct vo *vo)
-{
-    vo_wl_priv_fullscreen(&wl);
-}
-
-int check_events_wayland(struct vo *vo)
-{
-    return vo_wl_priv_check_events(&wl);
+    struct egl_context * egl_ctx = ctx->priv;
+    struct vo_wayland_state *wl = ctx->vo->wayland;
+    eglSwapBuffers(egl_ctx->egl.dpy, egl_ctx->egl_surface);
+    wl_display_flush(wl->display->display);
 }
 
 #endif
@@ -2633,17 +2592,18 @@ MPGLContext *init_mpglcontext(enum MPGLType type, struct vo *vo)
 #endif
 #ifdef CONFIG_GL_WAYLAND
     case GLTYPE_WAYLAND:
+        ctx->priv = talloc_zero(ctx, struct egl_context);
         ctx->create_window = create_window_wayland;
         ctx->setGlWindow = setGlWindow_wayland;
         ctx->releaseGlContext = releaseGlContext_wayland;
         ctx->swapGlBuffers = swapGlBuffers_wayland;
-        ctx->update_xinerama_info = update_xinerama_info_wayland;
-        ctx->border = vo_wl_border;
-        ctx->check_events = check_events_wayland;
-        ctx->fullscreen = fullscreen_wayland;
-        ctx->ontop = vo_wl_ontop;
-        ctx->vo_uninit = uninit_wayland;
-        if (init_wayland(vo))
+        ctx->update_xinerama_info = vo_wayland_update_xinerama_info;
+        ctx->border = vo_wayland_border;
+        ctx->check_events = vo_wayland_check_events;
+        ctx->fullscreen = vo_wayland_fullscreen;
+        ctx->ontop = vo_wayland_ontop;
+        ctx->vo_uninit = vo_wayland_uninit;
+        if (vo_wayland_init(vo))
             return ctx;
         break;
 #endif

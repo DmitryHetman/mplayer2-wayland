@@ -35,15 +35,14 @@
 #define MOD_ALT_MASK		0x02
 #define MOD_CONTROL_MASK	0x04
 
-enum vo_wl_window_type {
-    TYPE_FULLSCREEN,
-    TYPE_TOPLEVEL
+enum vo_wayland_window_type {
+    TYPE_TOPLEVEL,
+    TYPE_FULLSCREEN
 };
 
 struct vo;
-struct vo_wl_private;
 
-struct vo_wl_display {
+struct vo_wayland_display {
     struct wl_display *display;
     struct wl_registry *registry;
     struct wl_compositor *compositor;
@@ -70,7 +69,7 @@ struct vo_wl_display {
     uint32_t mask;
 };
 
-struct vo_wl_window {
+struct vo_wayland_window {
     uint32_t width;
     uint32_t height;
     uint32_t p_width;
@@ -81,15 +80,11 @@ struct vo_wl_window {
     struct wl_buffer *buffer;
     struct wl_callback *callback;
 
-    struct wl_egl_window *egl_window;
-
-    enum vo_wl_window_type type; /* is fullscreen */
+    enum vo_wayland_window_type type; /* is fullscreen */
     uint8_t redraw;
-
-    struct vo_wl_private *private;
 };
 
-struct vo_wl_input {
+struct vo_wayland_input {
     struct wl_seat *seat;
     struct wl_keyboard *keyboard;
     struct wl_pointer *pointer;
@@ -114,24 +109,21 @@ struct vo_wl_input {
     } repeat;
 };
 
-struct wl_priv {
-    struct vo_wl_display *display;
-    struct vo_wl_window *window;
-    struct vo_wl_input *input;
-
+struct vo_wayland_state {
     struct vo *vo;
+
+    struct vo_wayland_display *display;
+    struct vo_wayland_window *window;
+    struct vo_wayland_input *input;
 };
 
-int vo_wl_init(struct vo *vo);
-void vo_wl_uninit(struct vo *vo);
-void vo_wl_ontop(struct vo *vo);
-void vo_wl_border(struct vo *vo);
-void vo_wl_fullscreen(struct vo *vo);
-int vo_wl_check_events (struct vo *vo);
+int vo_wayland_init(struct vo *vo);
+void vo_wayland_uninit(struct vo *vo);
+void vo_wayland_ontop(struct vo *vo);
+void vo_wayland_border(struct vo *vo);
+void vo_wayland_fullscreen(struct vo *vo);
+void vo_wayland_update_xinerama_info(struct vo *vo);
+int vo_wayland_check_events(struct vo *vo);
 
-int vo_wl_priv_init(struct wl_priv *wl);
-void vo_wl_priv_uninit (struct wl_priv *wl);
-void vo_wl_priv_fullscreen (struct wl_priv *wl);
-int vo_wl_priv_check_events(struct wl_priv *wl);
 #endif /* MPLAYER_WAYLAND_COMMON_H */
 

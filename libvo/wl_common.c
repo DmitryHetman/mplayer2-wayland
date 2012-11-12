@@ -47,11 +47,11 @@
 #include "input/input.h"
 #include "input/keycodes.h"
 
-static void create_display (struct wl_priv *wl);
-static void create_window (struct wl_priv *wl, int width, int height);
+static void create_display (struct vo_wayland_state *wl);
+static void create_window (struct vo_wayland_state *wl, int width, int height);
 
-static void hide_cursor (struct vo_wl_display * display);
-static void show_cursor (struct vo_wl_display * display);
+static void hide_cursor (struct vo_wayland_display * display);
+static void show_cursor (struct vo_wayland_display * display);
 
 /* SHELL SURFACE LISTENER  */
 static void ssurface_handle_ping (void *data,
@@ -88,7 +88,7 @@ static void output_handle_geometry (void *data, struct wl_output *wl_output,
 static void output_handle_mode (void *data, struct wl_output *wl_output,
         uint32_t flags, int32_t width, int32_t height, int32_t refresh)
 {
-    struct vo_wl_display *d = data;
+    struct vo_wayland_display *d = data;
     if ((flags & WL_OUTPUT_MODE_PREFERRED) == WL_OUTPUT_MODE_PREFERRED) {
         d->output_height = height;
         d->output_width = width;
@@ -147,7 +147,7 @@ static const struct mp_keymap keymap[] = {
     {0, 0}
 };
 
-static int vo_wl_lookupkey(int key)
+static int vo_wayland_lookupkey(int key)
 {
     static const char *passthrough_keys
         = " -+*/<>`~!@#$%^&()_{}:;\"\',.?\\|=[]";
@@ -169,7 +169,7 @@ static int vo_wl_lookupkey(int key)
 static void keyboard_handle_keymap(void *data, struct wl_keyboard *wl_keyboard,
         uint32_t format, int32_t fd, uint32_t size)
 {
-    struct vo_wl_input *input = ((struct wl_priv *) data)->input;
+    struct vo_wayland_input *input = ((struct vo_wayland_state *) data)->input;
     char *map_str;
 
     if(!data) {
@@ -228,8 +228,8 @@ static void keyboard_handle_leave(void *data, struct wl_keyboard *wl_keyboard,
 static void keyboard_handle_key(void *data, struct wl_keyboard *wl_keyboard,
         uint32_t serial, uint32_t time, uint32_t key, uint32_t state)
 {
-    struct wl_priv *wl = data;
-    struct vo_wl_input *input = wl->input;
+    struct vo_wayland_state *wl = data;
+    struct vo_wayland_input *input = wl->input;
     uint32_t code, num_syms;
 
     struct itimerspec its;
@@ -257,7 +257,7 @@ static void keyboard_handle_key(void *data, struct wl_keyboard *wl_keyboard,
         sym = syms[0];
 
     if (sym != XKB_KEY_NoSymbol && state == WL_KEYBOARD_KEY_STATE_PRESSED) {
-        int mpkey = vo_wl_lookupkey(sym);
+        int mpkey = vo_wayland_lookupkey(sym);
         if (mpkey)
 	        mplayer_put_key(wl->vo->key_fifo, mpkey);
         input->events |= VO_EVENT_KEYPRESS;
@@ -287,7 +287,7 @@ static void keyboard_handle_modifiers(void *data,
         uint32_t mods_depressed, uint32_t mods_latched,
         uint32_t mods_locked, uint32_t group)
 {
-    struct vo_wl_input *input = ((struct wl_priv *) data)->input;
+    struct vo_wayland_input *input = ((struct vo_wayland_state *) data)->input;
 
     xkb_state_update_mask(input->xkb.state, mods_depressed, mods_latched,
             mods_locked, 0, 0, group);
@@ -306,8 +306,8 @@ static void pointer_handle_enter(void *data, struct wl_pointer *pointer,
         uint32_t serial, struct wl_surface *surface,
         wl_fixed_t sx_w, wl_fixed_t sy_w)
 {
-    struct wl_priv *wl = data;
-    struct vo_wl_display * display = wl->display;
+    struct vo_wayland_state *wl = data;
+    struct vo_wayland_display * display = wl->display;
 
     display->cursor.serial = serial;
     display->cursor.pointer = pointer;
@@ -327,8 +327,8 @@ static void pointer_handle_leave(void *data, struct wl_pointer *pointer,
 static void pointer_handle_motion(void *data, struct wl_pointer *pointer,
         uint32_t time, wl_fixed_t sx_w, wl_fixed_t sy_w)
 {
-    struct wl_priv *wl = data;
-    struct vo_wl_display * display = wl->display;
+    struct vo_wayland_state *wl = data;
+    struct vo_wayland_display * display = wl->display;
 
     display->cursor.pointer = pointer;
 
@@ -348,7 +348,7 @@ static void pointer_handle_motion(void *data, struct wl_pointer *pointer,
 static void pointer_handle_button(void *data, struct wl_pointer *pointer,
         uint32_t serial, uint32_t time, uint32_t button, uint32_t state)
 {
-    struct wl_priv *wl = data;
+    struct vo_wayland_state *wl = data;
 
     mplayer_put_key(wl->vo->key_fifo, MOUSE_BTN0 + (button - BTN_LEFT) |
         ((state == WL_POINTER_BUTTON_STATE_PRESSED) ? MP_KEY_DOWN : 0));
@@ -357,7 +357,7 @@ static void pointer_handle_button(void *data, struct wl_pointer *pointer,
 static void pointer_handle_axis(void *data, struct wl_pointer *pointer,
         uint32_t time, uint32_t axis, wl_fixed_t value)
 {
-    struct wl_priv *wl = data;
+    struct vo_wayland_state *wl = data;
 
     if (axis == WL_POINTER_AXIS_VERTICAL_SCROLL) {
         if (value > 0)
@@ -378,7 +378,7 @@ static const struct wl_pointer_listener pointer_listener = {
 static void seat_handle_capabilities(void *data, struct wl_seat *seat,
         enum wl_seat_capability caps)
 {
-    struct wl_priv *wl = data;
+    struct vo_wayland_state *wl = data;
 
     if ((caps & WL_SEAT_CAPABILITY_KEYBOARD) && !wl->input->keyboard) {
         wl->input->keyboard = wl_seat_get_keyboard(seat);
@@ -404,7 +404,7 @@ static const struct wl_seat_listener seat_listener = {
 static void shm_handle_format(void *data, struct wl_shm *wl_shm,
         uint32_t format)
 {
-    struct vo_wl_display *d = data;
+    struct vo_wayland_display *d = data;
     d->formats |= (1 << format);
 }
 
@@ -415,8 +415,8 @@ const struct wl_shm_listener shm_listener = {
 static void registry_handle_global (void *data, struct wl_registry *registry,
         uint32_t id, const char *interface, uint32_t version)
 {
-    struct wl_priv *wl = data;
-    struct vo_wl_display *d = wl->display;
+    struct vo_wayland_state *wl = data;
+    struct vo_wayland_display *d = wl->display;
     if (strcmp(interface, "wl_compositor") == 0) {
         d->compositor = wl_registry_bind(d->registry, id,
                 &wl_compositor_interface, 1);
@@ -455,14 +455,20 @@ static const struct wl_registry_listener registry_listener = {
 
 /*** ----- ***/
 
-static void hide_cursor (struct vo_wl_display *display)
+static void hide_cursor (struct vo_wayland_display *display)
 {
+    if (!display->cursor.pointer)
+        return;
+
     wl_pointer_set_cursor(display->cursor.pointer, display->cursor.serial,
             NULL, 0, 0);
 }
 
-static void show_cursor (struct vo_wl_display *display)
+static void show_cursor (struct vo_wayland_display *display)
 {
+    if (!display->cursor.pointer)
+        return;
+
     struct wl_buffer *buffer;
     struct wl_cursor_image *image;
 
@@ -476,23 +482,18 @@ static void show_cursor (struct vo_wl_display *display)
     wl_surface_commit(display->cursor.surface);
 }
 
-static void create_display (struct wl_priv *wl)
+static void create_display (struct vo_wayland_state *wl)
 {
     if (wl->display)
         return;
 
-    wl->display = malloc(sizeof(struct vo_wl_display));
+    wl->display = talloc_zero(wl, struct vo_wayland_display);
     wl->display->display = wl_display_connect(NULL);
 
     assert(wl->display->display);
     wl->display->registry = wl_display_get_registry(wl->display->display);
     wl_registry_add_listener(wl->display->registry, &registry_listener,
             wl);
-
-    wl->display->mode_received = 0;
-    wl->display->formats = 0;
-    wl->display->mask = 0;
-    wl->window = NULL;
 
     wl_display_dispatch(wl->display->display);
 
@@ -503,7 +504,7 @@ static void create_display (struct wl_priv *wl)
             TFD_CLOEXEC | TFD_NONBLOCK);
 }
 
-static void destroy_display (struct wl_priv *wl)
+static void destroy_display (struct vo_wayland_state *wl)
 {
     close(wl->display->cursor.timer_fd);
     wl_surface_destroy(wl->display->cursor.surface);
@@ -522,21 +523,17 @@ static void destroy_display (struct wl_priv *wl)
 
     wl_display_flush(wl->display->display);
     wl_display_disconnect(wl->display->display);
-    free(wl->display);
-    wl->display = NULL;
-
     vo_fs = VO_FALSE;
+
+    wl->display = NULL;
 }
 
-static void create_window (struct wl_priv *wl, int width, int height)
+static void create_window (struct vo_wayland_state *wl, int width, int height)
 {
     if (wl->window)
         return;
 
-    wl->window = malloc(sizeof(struct vo_wl_window));
-    wl->window->private = NULL;
-    wl->window->egl_window = NULL;
-    wl->window->callback = NULL;
+    wl->window = talloc_zero(wl, struct vo_wayland_window);
     wl->window->width = width;
     wl->window->height = height;
     wl->window->surface = wl_compositor_create_surface(wl->display->compositor);
@@ -550,30 +547,22 @@ static void create_window (struct wl_priv *wl, int width, int height)
     wl_shell_surface_set_toplevel(wl->window->shell_surface);
 }
 
-static void destroy_window (struct wl_priv *wl)
+static void destroy_window (struct vo_wayland_state *wl)
 {
     if (wl->window->callback)
         wl_callback_destroy(wl->window->callback);
 
-    if (wl->window->egl_window)
-        wl_egl_window_destroy(wl->window->egl_window);
-
     wl_shell_surface_destroy(wl->window->shell_surface);
     wl_surface_destroy(wl->window->surface);
-    free(wl->window->private);
-    free(wl->window);
-    wl->window = 0;
+    wl->window = NULL;
 }
 
-static void create_input (struct wl_priv *wl)
+static void create_input (struct vo_wayland_state *wl)
 {
     if (wl->input)
         return;
 
-    wl->input = malloc(sizeof(struct vo_wl_input));
-    wl->input->seat = NULL;
-    wl->input->keyboard = NULL;
-    wl->input->pointer = NULL;
+    wl->input = talloc_zero(wl, struct vo_wayland_input);
 
     wl->input->repeat.timer_fd = timerfd_create(CLOCK_MONOTONIC,
             TFD_CLOEXEC | TFD_NONBLOCK);
@@ -589,26 +578,25 @@ static void create_input (struct wl_priv *wl)
     }
 }
 
-static void destroy_input (struct wl_priv *wl)
+static void destroy_input (struct vo_wayland_state *wl)
 {
     if (wl->input->seat)
         wl_seat_destroy(wl->input->seat);
 
     xkb_context_unref(wl->input->xkb.context);
     close(wl->input->repeat.timer_fd);
-    free(wl->input);
     wl->input = NULL;
 }
 
-int vo_wl_init (struct vo *vo)
-{
-    struct wl_priv *wl = vo->priv;
-    wl->vo = vo;
-    return vo_wl_priv_init(wl);
-}
 
-int vo_wl_priv_init(struct wl_priv *wl)
+/*** vo_wayland interface ***/
+
+int vo_wayland_init (struct vo *vo)
 {
+    vo->wayland = talloc_zero(vo, struct vo_wayland_state);
+    struct vo_wayland_state *wl = vo->wayland;
+    wl->vo = vo;
+
     create_input(wl);
     create_display(wl);
     if (!wl->display) {
@@ -620,29 +608,27 @@ int vo_wl_priv_init(struct wl_priv *wl)
     return 1;
 }
 
-void vo_wl_uninit (struct vo *vo)
+void vo_wayland_uninit (struct vo *vo)
 {
-    struct wl_priv *wl = vo->priv;
-    vo_wl_priv_uninit(wl);
-}
-
-void vo_wl_priv_uninit (struct wl_priv *wl)
-{
+    struct vo_wayland_state *wl = vo->wayland;
     destroy_input(wl);
     destroy_window(wl);
     destroy_display(wl);
+    talloc_free(wl);
+    vo->wayland = NULL;
 }
 
-void vo_wl_ontop (struct vo *vo)
+void vo_wayland_ontop (struct vo *vo)
 {
 }
 
-void vo_wl_border (struct vo *vo)
+void vo_wayland_border (struct vo *vo)
 {
 }
 
-void vo_wl_priv_fullscreen (struct wl_priv *wl)
+void vo_wayland_fullscreen (struct vo *vo)
 {
+    struct vo_wayland_state *wl = vo->wayland;
     if (!wl->window || !wl->display->shell)
 		return;
 
@@ -667,14 +653,9 @@ void vo_wl_priv_fullscreen (struct wl_priv *wl)
     }
 }
 
-void vo_wl_fullscreen (struct vo *vo)
+int vo_wayland_check_events (struct vo *vo)
 {
-    struct wl_priv *wl = vo->priv;
-    vo_wl_priv_fullscreen(wl);
-}
-
-int vo_wl_priv_check_events (struct wl_priv *wl)
-{
+    struct vo_wayland_state *wl = vo->wayland;
     int ret = 0;
     uint64_t exp;
     wl->input->events = 0;
@@ -685,8 +666,8 @@ int vo_wl_priv_check_events (struct wl_priv *wl)
                 wl->input->repeat.key, WL_KEYBOARD_KEY_STATE_PRESSED);
     }
 
-    if (wl->window->type == TYPE_FULLSCREEN && read(wl->display->cursor.timer_fd,
-                &exp, sizeof exp) == sizeof exp) {
+    if ((read(wl->display->cursor.timer_fd, &exp, sizeof exp) == sizeof exp)
+            && wl->window->type == TYPE_FULLSCREEN) {
         hide_cursor(wl->display);
     }
 
@@ -694,9 +675,21 @@ int vo_wl_priv_check_events (struct wl_priv *wl)
     return ret;
 }
 
-int vo_wl_check_events (struct vo *vo)
+void vo_wayland_update_xinerama_info (struct vo *vo)
 {
-    struct wl_priv *wl = vo->priv;
-    return vo_wl_priv_check_events(wl);
+    struct vo_wayland_state *wl = vo->wayland;
+    struct MPOpts *opts = vo->opts;
+
+    // WTF?
+   // vo_wayland_priv_init(egl_ctx->wl);
+
+    wl_display_roundtrip(wl->display->display);
+    if (!wl->display->mode_received)
+        mp_msg(MSGT_VO, MSGL_ERR, "[wl] no output mode detected\n");
+
+    opts->vo_screenwidth = wl->display->output_width;
+    opts->vo_screenheight = wl->display->output_height;
+
+    aspect_save_screenres(vo, opts->vo_screenwidth, opts->vo_screenheight);
 }
 
