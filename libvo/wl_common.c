@@ -622,6 +622,16 @@ void vo_wayland_uninit (struct vo *vo)
 
 void vo_wayland_ontop (struct vo *vo)
 {
+    struct vo_wayland_state *wl = vo->wayland;
+
+    vo->opts->vo_ontop = !vo->opts->vo_ontop;
+
+    if (vo_fs)
+        vo_wayland_fullscreen(vo);
+        /* use the already existing code to leave fullscreen mode and go into
+         * toplevel mode */
+    else
+        wl_shell_surface_set_toplevel(wl->window->shell_surface);
 }
 
 void vo_wayland_border (struct vo *vo)
