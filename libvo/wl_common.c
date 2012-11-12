@@ -680,9 +680,6 @@ void vo_wayland_update_xinerama_info (struct vo *vo)
     struct vo_wayland_state *wl = vo->wayland;
     struct MPOpts *opts = vo->opts;
 
-    // WTF?
-   // vo_wayland_priv_init(egl_ctx->wl);
-
     wl_display_roundtrip(wl->display->display);
     if (!wl->display->mode_received)
         mp_msg(MSGT_VO, MSGL_ERR, "[wl] no output mode detected\n");
