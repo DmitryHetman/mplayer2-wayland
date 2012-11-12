@@ -47,11 +47,13 @@
 #include "input/input.h"
 #include "input/keycodes.h"
 
-static void create_display (struct vo_wayland_state *wl);
-static void create_window (struct vo_wayland_state *wl, int width, int height);
+static int lookupkey(int key);
 
 static void hide_cursor (struct vo_wayland_display * display);
 static void show_cursor (struct vo_wayland_display * display);
+
+
+/*** wayland interface ***/
 
 /* SHELL SURFACE LISTENER  */
 static void ssurface_handle_ping (void *data,
@@ -147,24 +149,6 @@ static const struct mp_keymap keymap[] = {
     {0, 0}
 };
 
-static int vo_wayland_lookupkey(int key)
-{
-    static const char *passthrough_keys
-        = " -+*/<>`~!@#$%^&()_{}:;\"\',.?\\|=[]";
-
-    int mpkey = 0;
-    if ((key >= 'a' && key <= 'z') ||
-        (key >= 'A' && key <= 'Z') ||
-        (key >= '0' && key <= '9') ||
-        (key >  0   && key <  256 && strchr(passthrough_keys, key)))
-        mpkey = key;
-
-    if (!mpkey)
-        mpkey = lookup_keymap_table(keymap, key);
-
-    return mpkey;
-}
-
 /* KEYBOARD LISTENER */
 static void keyboard_handle_keymap(void *data, struct wl_keyboard *wl_keyboard,
         uint32_t format, int32_t fd, uint32_t size)
@@ -257,7 +241,7 @@ static void keyboard_handle_key(void *data, struct wl_keyboard *wl_keyboard,
         sym = syms[0];
 
     if (sym != XKB_KEY_NoSymbol && state == WL_KEYBOARD_KEY_STATE_PRESSED) {
-        int mpkey = vo_wayland_lookupkey(sym);
+        int mpkey = lookupkey(sym);
         if (mpkey)
 	        mplayer_put_key(wl->vo->key_fifo, mpkey);
         input->events |= VO_EVENT_KEYPRESS;
@@ -453,7 +437,25 @@ static const struct wl_registry_listener registry_listener = {
 };
 
 
-/*** ----- ***/
+/*** internal functions ***/
+
+static int lookupkey(int key)
+{
+    static const char *passthrough_keys
+        = " -+*/<>`~!@#$%^&()_{}:;\"\',.?\\|=[]";
+
+    int mpkey = 0;
+    if ((key >= 'a' && key <= 'z') ||
+        (key >= 'A' && key <= 'Z') ||
+        (key >= '0' && key <= '9') ||
+        (key >  0   && key <  256 && strchr(passthrough_keys, key)))
+        mpkey = key;
+
+    if (!mpkey)
+        mpkey = lookup_keymap_table(keymap, key);
+
+    return mpkey;
+}
 
 static void hide_cursor (struct vo_wayland_display *display)
 {
@@ -589,7 +591,7 @@ static void destroy_input (struct vo_wayland_state *wl)
 }
 
 
-/*** vo_wayland interface ***/
+/*** mplayer2 interface ***/
 
 int vo_wayland_init (struct vo *vo)
 {
