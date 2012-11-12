@@ -636,6 +636,13 @@ void vo_wayland_ontop (struct vo *vo)
 
 void vo_wayland_border (struct vo *vo)
 {
+    /* wayland clienst have to do the decorations themself
+     * (client side decorations) but there is no such code implement nor
+     * do I plan on implementing something like client side decorations
+     *
+     * The only exception would be resizing on when clicking and dragging
+     * on the border region of the window but this should be discussed at first
+     */
 }
 
 void vo_wayland_fullscreen (struct vo *vo)
