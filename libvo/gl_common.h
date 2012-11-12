@@ -41,14 +41,6 @@
 #endif
 #include <OpenGL/glext.h>
 #else
-
-#ifdef CONFIG_GL_WAYLAND
-#include "wl_common.h"
-#include <wayland-egl.h>
-#include <EGL/egl.h>
-#include <EGL/eglext.h>
-#endif
-
 #include <GL/gl.h>
 #include <GL/glext.h>
 #endif

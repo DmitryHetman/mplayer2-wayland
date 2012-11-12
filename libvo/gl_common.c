@@ -2301,8 +2301,12 @@ static void swapGlBuffers_x11(MPGLContext *ctx)
 #endif
 
 #ifdef CONFIG_GL_WAYLAND
-#include <assert.h>
+
 #include "wl_common.h"
+#include <wayland-egl.h>
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
+#include <assert.h>
 
 struct egl_context {
     EGLSurface egl_surface;
