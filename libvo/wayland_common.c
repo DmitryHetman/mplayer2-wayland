@@ -35,7 +35,7 @@
 #include "libavutil/common.h"
 #include "talloc.h"
 
-#include "wl_common.h"
+#include "wayland_common.h"
 
 #include "video_out.h"
 #include "aspect.h"

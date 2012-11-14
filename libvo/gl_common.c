@@ -2302,7 +2302,7 @@ static void swapGlBuffers_x11(MPGLContext *ctx)
 
 #ifdef CONFIG_GL_WAYLAND
 
-#include "wl_common.h"
+#include "wayland_common.h"
 #include <wayland-egl.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
