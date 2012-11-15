@@ -85,6 +85,9 @@ static void output_handle_geometry (void *data, struct wl_output *wl_output,
         int32_t subpixel, const char *make, const char *model,
         int32_t transform)
 {
+    struct vo_wayland_display *d = data;
+    d->output_x = x;
+    d->output_y = y;
 }
 
 static void output_handle_mode (void *data, struct wl_output *wl_output,
@@ -530,14 +533,13 @@ static void destroy_display (struct vo_wayland_state *wl)
     wl->display = NULL;
 }
 
-static void create_window (struct vo_wayland_state *wl, int width, int height)
+static void create_window (struct vo_wayland_state *wl)
 {
     if (wl->window)
         return;
 
     wl->window = talloc_zero(wl, struct vo_wayland_window);
-    wl->window->width = width;
-    wl->window->height = height;
+
     wl->window->surface = wl_compositor_create_surface(wl->display->compositor);
     wl->window->shell_surface = wl_shell_get_shell_surface(wl->display->shell,
             wl->window->surface);
@@ -606,7 +608,7 @@ int vo_wayland_init (struct vo *vo)
         return 0;
     }
 
-    create_window(wl, 0, 0);
+    create_window(wl);
     return 1;
 }
 
@@ -707,5 +709,7 @@ void vo_wayland_update_xinerama_info (struct vo *vo)
     opts->vo_screenheight = wl->display->output_height;
 
     aspect_save_screenres(vo, opts->vo_screenwidth, opts->vo_screenheight);
+    xinerama_x = wl->display->output_x;
+    xinerama_y = wl->display->output_y;
 }
 
