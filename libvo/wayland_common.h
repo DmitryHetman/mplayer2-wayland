@@ -77,6 +77,11 @@ struct vo_wayland_window {
     uint32_t p_width;
     uint32_t p_height;
 
+    uint32_t pending_width;
+    uint32_t pending_height;
+    uint32_t edges;
+    int resize_needed;
+
     struct wl_surface *surface;
     struct wl_shell_surface *shell_surface;
     struct wl_buffer *buffer;
@@ -85,7 +90,6 @@ struct vo_wayland_window {
     int events; /* mplayer events */
 
     enum vo_wayland_window_type type; /* is fullscreen */
-    uint8_t redraw;
 };
 
 struct vo_wayland_input {
@@ -115,10 +119,6 @@ struct vo_wayland_input {
 
 struct vo_wayland_state {
     struct vo *vo;
-    void *vo_priv; /* private data for the video output */
-
-    void (*resize_func) (struct vo_wayland_state *wl, uint32_t edges,
-            uint32_t width, uint32_t height);
 
     struct vo_wayland_display *display;
     struct vo_wayland_window *window;

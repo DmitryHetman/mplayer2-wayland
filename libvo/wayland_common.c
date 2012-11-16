@@ -67,9 +67,11 @@ static void ssurface_handle_configure (void *data,
         uint32_t edges, int32_t width, int32_t height)
 {
     struct vo_wayland_state *wl = data;
-    if (wl->resize_func)
-        wl->resize_func(wl, edges, width, height);
 
+    wl->window->edges = edges;
+    wl->window->pending_width = width;
+    wl->window->pending_height = height;
+    wl->window->resize_needed = 1;
     wl->window->events |= VO_EVENT_RESIZE;
 }
 
@@ -699,6 +701,9 @@ int vo_wayland_check_events (struct vo *vo)
 
     ret = wl->input->events;
     ret |= wl->window->events;
+
+    wl->input->events = 0;
+    wl->window->events = 0;
     return ret;
 }
 
