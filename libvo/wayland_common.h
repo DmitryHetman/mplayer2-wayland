@@ -82,6 +82,8 @@ struct vo_wayland_window {
     struct wl_buffer *buffer;
     struct wl_callback *callback;
 
+    int events; /* mplayer events */
+
     enum vo_wayland_window_type type; /* is fullscreen */
     uint8_t redraw;
 };
