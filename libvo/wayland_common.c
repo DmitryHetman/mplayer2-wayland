@@ -66,6 +66,11 @@ static void ssurface_handle_configure (void *data,
         struct wl_shell_surface *shell_surface,
         uint32_t edges, int32_t width, int32_t height)
 {
+    struct vo_wayland_state *wl = data;
+    if (wl->resize_func)
+        wl->resize_func(wl, edges, width, height);
+
+    wl->window->events |= VO_EVENT_RESIZE;
 }
 
 static void ssurface_handle_popup_done (void *data,
@@ -546,7 +551,7 @@ static void create_window (struct vo_wayland_state *wl)
 
     if (wl->window->shell_surface)
         wl_shell_surface_add_listener(wl->window->shell_surface,
-                &shell_surface_listener, wl->window);
+                &shell_surface_listener, wl);
 
     wl_shell_surface_set_toplevel(wl->window->shell_surface);
 }
@@ -693,6 +698,7 @@ int vo_wayland_check_events (struct vo *vo)
     }
 
     ret = wl->input->events;
+    ret |= wl->window->events;
     return ret;
 }
 

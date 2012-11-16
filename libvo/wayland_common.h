@@ -113,6 +113,10 @@ struct vo_wayland_input {
 
 struct vo_wayland_state {
     struct vo *vo;
+    void *vo_priv; /* private data for the video output */
+
+    void (*resize_func) (struct vo_wayland_state *wl, uint32_t edges,
+            uint32_t width, uint32_t height);
 
     struct vo_wayland_display *display;
     struct vo_wayland_window *window;
