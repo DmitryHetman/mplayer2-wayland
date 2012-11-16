@@ -2320,7 +2320,7 @@ struct egl_context {
     } egl;
 };
 
-void egl_resize_func (struct vo_wayland_state *wl, struct egl_context *ctx)
+static void egl_resize_func (struct vo_wayland_state *wl, struct egl_context *ctx)
 {
     int32_t x, y;
 
@@ -2346,6 +2346,7 @@ void egl_resize_func (struct vo_wayland_state *wl, struct egl_context *ctx)
     wl->vo->dwidth = wl->window->pending_width;
     wl->vo->dheight = wl->window->pending_height;
     wl->window->events |= VO_EVENT_RESIZE;
+    wl->window->edges = 0;
     wl->window->resize_needed = 0;
 }
 

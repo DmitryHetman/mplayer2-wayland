@@ -62,6 +62,15 @@ static void ssurface_handle_ping (void *data,
     wl_shell_surface_pong(shell_surface, serial);
 }
 
+static void ssurface_schedule_resize (struct vo_wayland_window *window,
+					uint32_t width, uint32_t height)
+{
+    window->pending_width = width;
+    window->pending_height = height;
+    window->resize_needed = 1;
+    window->events |= VO_EVENT_RESIZE;
+}
+
 static void ssurface_handle_configure (void *data,
         struct wl_shell_surface *shell_surface,
         uint32_t edges, int32_t width, int32_t height)
@@ -69,10 +78,7 @@ static void ssurface_handle_configure (void *data,
     struct vo_wayland_state *wl = data;
 
     wl->window->edges = edges;
-    wl->window->pending_width = width;
-    wl->window->pending_height = height;
-    wl->window->resize_needed = 1;
-    wl->window->events |= VO_EVENT_RESIZE;
+    ssurface_schedule_resize(wl->window, width, height);
 }
 
 static void ssurface_handle_popup_done (void *data,
@@ -672,8 +678,8 @@ void vo_wayland_fullscreen (struct vo *vo)
         hide_cursor(wl->display);
     } else {
         wl_shell_surface_set_toplevel(wl->window->shell_surface);
-        wl->window->width = wl->window->p_width;
-        wl->window->height = wl->window->p_height;
+        ssurface_schedule_resize(wl->window, wl->window->p_width,
+                                             wl->window->p_height);
         wl->window->type = TYPE_TOPLEVEL;
         vo_fs = VO_FALSE;
 
