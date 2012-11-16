@@ -693,7 +693,8 @@ int vo_wayland_check_events (struct vo *vo)
     int ret = 0;
     uint64_t exp;
     wl->input->events = 0;
-    wl_display_roundtrip(wl->display->display);
+
+    wl_display_dispatch_pending(wl->display->display);
 
     if (read(wl->input->repeat.timer_fd, &exp, sizeof exp) == sizeof exp) {
         keyboard_handle_key(wl, wl->input->keyboard, 0, wl->input->repeat.time,
