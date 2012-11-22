@@ -770,6 +770,9 @@ int vo_wayland_init (struct vo *vo)
     create_input(wl);
     create_display(wl);
     create_timers(wl);
+
+    vo->event_fd = wl->display->display_fd;
+
     if (!wl->display) {
         mp_msg(MSGT_VO, MSGL_ERR, "[wl] failed to initialize display.\n");
         return 0;
