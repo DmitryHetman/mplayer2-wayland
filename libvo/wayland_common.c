@@ -49,6 +49,21 @@
 #include "input/input.h"
 #include "input/keycodes.h"
 
+    /* The button values are codes from linux/input.h but we can't
+     * include it because of conflicting definitions in mplayer. */
+#define BTN_LEFT            0x110
+
+#define MOD_SHIFT_MASK      0x01
+#define MOD_ALT_MASK        0x02
+#define MOD_CONTROL_MASK    0x04
+
+#define ARRAY_LENGTH(a) (sizeof (a) / sizeof (a)[0])
+
+#define container_of(ptr, type, member) ({                      \
+    const __typeof__( ((type *)0)->member ) *__mptr = (ptr);    \
+    (type *)( (char *)__mptr - offsetof(type,member) );})
+
+
 static int lookupkey(int key);
 
 static void hide_cursor (struct vo_wayland_display * display);
