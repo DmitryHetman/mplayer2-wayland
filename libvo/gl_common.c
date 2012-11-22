@@ -2324,6 +2324,12 @@ static void egl_resize_func (struct vo_wayland_state *wl, struct egl_context *ct
 {
     int32_t x, y, scaled_height;
     double ratio;
+    int minimum_size = 50;
+
+    if (wl->window->pending_width < minimum_size)
+	wl->window->pending_width = minimum_size;
+    if (wl->window->pending_height < minimum_size)
+	wl->window->pending_height = minimum_size;
 
     ratio = (double) wl->vo->aspdat.orgw / wl->vo->aspdat.orgh;
     scaled_height = wl->window->pending_height * ratio;

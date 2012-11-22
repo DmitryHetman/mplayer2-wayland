@@ -88,13 +88,13 @@ struct vo_wayland_display {
 };
 
 struct vo_wayland_window {
-    uint32_t width;
-    uint32_t height;
-    uint32_t p_width;
-    uint32_t p_height;
+    int32_t width;
+    int32_t height;
+    int32_t p_width;
+    int32_t p_height;
 
-    uint32_t pending_width;
-    uint32_t pending_height;
+    int32_t pending_width;
+    int32_t pending_height;
     uint32_t edges;
     int resize_needed;
 

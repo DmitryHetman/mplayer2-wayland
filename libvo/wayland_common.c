@@ -65,7 +65,7 @@ static void ssurface_handle_ping (void *data,
 }
 
 static void ssurface_schedule_resize (struct vo_wayland_window *window,
-					uint32_t width, uint32_t height)
+					int32_t width, int32_t height)
 {
     window->pending_width = width;
     window->pending_height = height;
