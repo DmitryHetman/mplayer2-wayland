@@ -65,7 +65,7 @@ static void ssurface_handle_ping (void *data,
 }
 
 static void ssurface_schedule_resize (struct vo_wayland_window *window,
-					int32_t width, int32_t height)
+        int32_t width, int32_t height)
 {
     window->pending_width = width;
     window->pending_height = height;
@@ -209,10 +209,10 @@ static void keyboard_handle_keymap(void *data, struct wl_keyboard *wl_keyboard,
         return;
     }
 
-	input->xkb.control_mask =
-		1 << xkb_map_mod_get_index(input->xkb.keymap, "Control");
-	input->xkb.alt_mask =
-		1 << xkb_map_mod_get_index(input->xkb.keymap, "Mod1");
+    input->xkb.control_mask =
+        1 << xkb_map_mod_get_index(input->xkb.keymap, "Control");
+    input->xkb.alt_mask =
+        1 << xkb_map_mod_get_index(input->xkb.keymap, "Mod1");
     input->xkb.shift_mask =
         1 << xkb_map_mod_get_index(input->xkb.keymap, "Shift");
 }
@@ -261,7 +261,7 @@ static void keyboard_handle_key(void *data, struct wl_keyboard *wl_keyboard,
     if (sym != XKB_KEY_NoSymbol && state == WL_KEYBOARD_KEY_STATE_PRESSED) {
         int mpkey = lookupkey(sym);
         if (mpkey)
-	        mplayer_put_key(wl->vo->key_fifo, mpkey);
+            mplayer_put_key(wl->vo->key_fifo, mpkey);
         input->events |= VO_EVENT_KEYPRESS;
     }
 
@@ -370,11 +370,11 @@ static void pointer_handle_axis(void *data, struct wl_pointer *pointer,
 }
 
 static const struct wl_pointer_listener pointer_listener = {
-	pointer_handle_enter,
-	pointer_handle_leave,
-	pointer_handle_motion,
-	pointer_handle_button,
-	pointer_handle_axis,
+    pointer_handle_enter,
+    pointer_handle_leave,
+    pointer_handle_motion,
+    pointer_handle_button,
+    pointer_handle_axis,
 };
 
 static void seat_handle_capabilities(void *data, struct wl_seat *seat,
@@ -505,92 +505,92 @@ static void show_cursor (struct vo_wayland_display *display)
 static int
 set_cloexec_or_close(int fd)
 {
-	long flags;
+    long flags;
 
-	if (fd == -1)
-		return -1;
+    if (fd == -1)
+        return -1;
 
-	flags = fcntl(fd, F_GETFD);
-	if (flags == -1)
-		goto err;
+    flags = fcntl(fd, F_GETFD);
+    if (flags == -1)
+        goto err;
 
-	if (fcntl(fd, F_SETFD, flags | FD_CLOEXEC) == -1)
-		goto err;
+    if (fcntl(fd, F_SETFD, flags | FD_CLOEXEC) == -1)
+        goto err;
 
-	return fd;
+    return fd;
 
 err:
-	close(fd);
-	return -1;
+    close(fd);
+    return -1;
 }
 
 static int
 os_epoll_create_cloexec(void)
 {
-	int fd;
+    int fd;
 
 #ifdef EPOLL_CLOEXEC
-	fd = epoll_create1(EPOLL_CLOEXEC);
-	if (fd >= 0)
-		return fd;
-	if (errno != EINVAL)
-		return -1;
+    fd = epoll_create1(EPOLL_CLOEXEC);
+    if (fd >= 0)
+        return fd;
+    if (errno != EINVAL)
+        return -1;
 #endif
 
-	fd = epoll_create(1);
-	return set_cloexec_or_close(fd);
+    fd = epoll_create(1);
+    return set_cloexec_or_close(fd);
 }
 
 static void
 display_watch_fd(struct vo_wayland_display *display,
-		 int fd, uint32_t events, struct task *task)
+         int fd, uint32_t events, struct task *task)
 {
-	struct epoll_event ep;
+    struct epoll_event ep;
 
-	if (display->epoll_fd < 0) {
-		fprintf(stderr, "Could not watch fd\n");
-		return;
-	}
+    if (display->epoll_fd < 0) {
+        fprintf(stderr, "Could not watch fd\n");
+        return;
+    }
 
-	ep.events = events;
-	ep.data.ptr = task;
-	epoll_ctl(display->epoll_fd, EPOLL_CTL_ADD, fd, &ep);
+    ep.events = events;
+    ep.data.ptr = task;
+    epoll_ctl(display->epoll_fd, EPOLL_CTL_ADD, fd, &ep);
 }
 
 static void
 handle_display_data(struct task *task, uint32_t events)
 {
-	struct vo_wayland_display *display =
-		container_of(task, struct vo_wayland_display, display_task);
-	struct epoll_event ep;
-	int ret;
+    struct vo_wayland_display *display =
+        container_of(task, struct vo_wayland_display, display_task);
+    struct epoll_event ep;
+    int ret;
 
-	if (events & EPOLLERR || events & EPOLLHUP)
-		exit(-1);
+    if (events & EPOLLERR || events & EPOLLHUP)
+        exit(-1);
 
-	if (events & EPOLLIN) {
-		ret = wl_display_dispatch(display->display);
-		if (ret == -1)
-			exit(-1);
-	}
+    if (events & EPOLLIN) {
+        ret = wl_display_dispatch(display->display);
+        if (ret == -1)
+            exit(-1);
+    }
 
-	if (events & EPOLLOUT) {
-		ret = wl_display_flush(display->display);
-		if (ret == 0) {
-			ep.events = EPOLLIN | EPOLLERR | EPOLLHUP;
-			ep.data.ptr = &display->display_task;
-			epoll_ctl(display->epoll_fd, EPOLL_CTL_MOD,
-				  display->display_fd, &ep);
-		} else if (ret == -1 && errno != EAGAIN)
-			exit(-1);
-	}
+    if (events & EPOLLOUT) {
+        ret = wl_display_flush(display->display);
+        if (ret == 0) {
+            ep.events = EPOLLIN | EPOLLERR | EPOLLHUP;
+            ep.data.ptr = &display->display_task;
+            epoll_ctl(display->epoll_fd, EPOLL_CTL_MOD,
+                  display->display_fd, &ep);
+        } else if (ret == -1 && errno != EAGAIN)
+            exit(-1);
+    }
 }
 
 static void
 hide_cursor_func(struct task *task, uint32_t events)
 {
     struct vo_wayland_display *display =
-		container_of(task, struct vo_wayland_display, cursor.task);
+        container_of(task, struct vo_wayland_display, cursor.task);
 
     if (display->cursor.task.wl->window->type == TYPE_FULLSCREEN)
         hide_cursor(display);
@@ -600,14 +600,14 @@ static void
 keyboard_repeat_func(struct task *task, uint32_t events)
 {
     struct vo_wayland_input *input =
-		container_of(task, struct vo_wayland_input, repeat.task);
+        container_of(task, struct vo_wayland_input, repeat.task);
     uint64_t exp;
 
     if (read(input->repeat.timer_fd, &exp, sizeof exp) != sizeof exp)
-	/* If we change the timer between the fd becoming
-	 * readable and getting here, there'll be nothing to
-	 * read and we get EAGAIN. */
-	return;
+        /* If we change the timer between the fd becoming
+         * readable and getting here, there'll be nothing to
+         * read and we get EAGAIN. */
+        return;
 
     keyboard_handle_key(input->repeat.task.wl, input->keyboard, 0,
         input->repeat.time, input->repeat.key, WL_KEYBOARD_KEY_STATE_PRESSED);
@@ -627,7 +627,7 @@ static void create_timers (struct vo_wayland_state *wl)
     i->repeat.task.wl = wl;
     i->repeat.task.run = keyboard_repeat_func;
     i->repeat.timer_fd = timerfd_create(CLOCK_MONOTONIC,
-					TFD_CLOEXEC | TFD_NONBLOCK);
+                    TFD_CLOEXEC | TFD_NONBLOCK);
     display_watch_fd(d, i->repeat.timer_fd, EPOLLIN, &i->repeat.task);
 }
 
@@ -656,7 +656,7 @@ static void create_display (struct vo_wayland_state *wl)
     d->display_fd = wl_display_get_fd(d->display);
     d->display_task.run = handle_display_data;
     display_watch_fd(d, d->display_fd, EPOLLIN | EPOLLERR | EPOLLHUP,
-					&d->display_task);
+                    &d->display_task);
 }
 
 static void destroy_display (struct vo_wayland_state *wl)
@@ -804,7 +804,7 @@ void vo_wayland_fullscreen (struct vo *vo)
 {
     struct vo_wayland_state *wl = vo->wayland;
     if (!wl->window || !wl->display->shell)
-		return;
+        return;
 
     if (!vo_fs) {
         wl->window->p_width = wl->window->width;
@@ -839,21 +839,21 @@ int vo_wayland_check_events (struct vo *vo)
 
     ret = wl_display_flush(wl->display->display);
     if (ret < 0 && errno == EAGAIN) {
-	ep[0].events =
-		EPOLLIN | EPOLLOUT | EPOLLERR | EPOLLHUP;
-	ep[0].data.ptr = NULL;
+        ep[0].events =
+            EPOLLIN | EPOLLOUT | EPOLLERR | EPOLLHUP;
+        ep[0].data.ptr = NULL;
 
-	epoll_ctl(wl->display->epoll_fd, EPOLL_CTL_MOD,
-		  wl->display->display_fd, &ep[0]);
+        epoll_ctl(wl->display->epoll_fd, EPOLL_CTL_MOD,
+        wl->display->display_fd, &ep[0]);
     } else if (ret < 0) {
-	return 0;
+        return 0;
     }
 
     count = epoll_wait(wl->display->epoll_fd,
-		   ep, ARRAY_LENGTH(ep), 1);
+            ep, ARRAY_LENGTH(ep), 1);
     for (i = 0; i < count; i++) {
-	task = ep[i].data.ptr;
-	task->run(task, ep[i].events);
+        task = ep[i].data.ptr;
+        task->run(task, ep[i].events);
     }
 
     ret = wl->input->events;

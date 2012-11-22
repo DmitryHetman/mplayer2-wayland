@@ -29,17 +29,17 @@
 
     /* The button values are codes from linux/input.h but we can't
      * include it because of conflicting definitions in mplayer. */
-#define BTN_LEFT 0x110
+#define BTN_LEFT            0x110
 
-#define MOD_SHIFT_MASK		0x01
-#define MOD_ALT_MASK		0x02
-#define MOD_CONTROL_MASK	0x04
+#define MOD_SHIFT_MASK      0x01
+#define MOD_ALT_MASK        0x02
+#define MOD_CONTROL_MASK    0x04
 
 #define ARRAY_LENGTH(a) (sizeof (a) / sizeof (a)[0])
 
-#define container_of(ptr, type, member) ({				\
-	const __typeof__( ((type *)0)->member ) *__mptr = (ptr);	\
-	(type *)( (char *)__mptr - offsetof(type,member) );})
+#define container_of(ptr, type, member) ({                      \
+    const __typeof__( ((type *)0)->member ) *__mptr = (ptr);    \
+    (type *)( (char *)__mptr - offsetof(type,member) );})
 
 enum vo_wayland_window_type {
     TYPE_TOPLEVEL,
@@ -49,9 +49,9 @@ enum vo_wayland_window_type {
 struct vo;
 
 struct task {
-        struct vo_wayland_state *wl;
-	void (*run)(struct task *task, uint32_t events);
-	struct wl_list link;
+    struct vo_wayland_state *wl;
+    void (*run)(struct task *task, uint32_t events);
+    struct wl_list link;
 };
 
 struct vo_wayland_display {
