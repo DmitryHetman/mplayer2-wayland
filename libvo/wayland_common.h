@@ -35,12 +35,24 @@
 #define MOD_ALT_MASK		0x02
 #define MOD_CONTROL_MASK	0x04
 
+#define ARRAY_LENGTH(a) (sizeof (a) / sizeof (a)[0])
+
+#define container_of(ptr, type, member) ({				\
+	const __typeof__( ((type *)0)->member ) *__mptr = (ptr);	\
+	(type *)( (char *)__mptr - offsetof(type,member) );})
+
 enum vo_wayland_window_type {
     TYPE_TOPLEVEL,
     TYPE_FULLSCREEN
 };
 
 struct vo;
+
+struct task {
+        struct vo_wayland_state *wl;
+	void (*run)(struct task *task, uint32_t events);
+	struct wl_list link;
+};
 
 struct vo_wayland_display {
     struct wl_display *display;
@@ -59,7 +71,11 @@ struct vo_wayland_display {
         struct wl_pointer *pointer;
         uint32_t serial;
         int timer_fd;
+        struct task task;
     } cursor;
+
+    int display_fd, epoll_fd;
+    struct task display_task;
 
     int mode_received;
     uint32_t output_width;
@@ -114,6 +130,7 @@ struct vo_wayland_input {
         uint32_t key;
         uint32_t time;
         int timer_fd;
+        struct task task;
     } repeat;
 };
 
