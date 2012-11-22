@@ -2322,7 +2322,16 @@ struct egl_context {
 
 static void egl_resize_func (struct vo_wayland_state *wl, struct egl_context *ctx)
 {
-    int32_t x, y;
+    int32_t x, y, scaled_height;
+    double ratio;
+
+    ratio = (double) wl->vo->aspdat.orgw / wl->vo->aspdat.orgh;
+    scaled_height = wl->window->pending_height * ratio;
+    if (wl->window->pending_width > scaled_height) {
+	wl->window->pending_height = wl->window->pending_width / ratio;
+    } else {
+        wl->window->pending_width = scaled_height;
+    }
 
     if (wl->window->edges & WL_SHELL_SURFACE_RESIZE_LEFT)
         x = wl->window->width - wl->window->pending_width;
