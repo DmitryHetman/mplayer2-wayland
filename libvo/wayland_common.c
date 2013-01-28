@@ -412,14 +412,18 @@ static void seat_handle_capabilities(void *data, struct wl_seat *seat,
         wl_keyboard_set_user_data(wl->input->keyboard, wl);
         wl_keyboard_add_listener(wl->input->keyboard, &keyboard_listener, wl);
     }
+    else if (!(caps & WL_SEAT_CAPABILITY_KEYBOARD) && wl->input->keyboard) {
+        wl_keyboard_destroy(wl->input->keyboard);
+        wl->input->keyboard = NULL;
+    }
     if ((caps & WL_SEAT_CAPABILITY_POINTER) && !wl->input->pointer) {
         wl->input->pointer = wl_seat_get_pointer(seat);
         wl_pointer_set_user_data(wl->input->pointer, wl);
         wl_pointer_add_listener(wl->input->pointer, &pointer_listener, wl);
     }
-    else if (!(caps & WL_SEAT_CAPABILITY_KEYBOARD) && wl->input->keyboard) {
-        wl_keyboard_destroy(wl->input->keyboard);
-        wl->input->keyboard = NULL;
+    else if (!(caps & WL_SEAT_CAPABILITY_POINTER) && wl->input->pointer) {
+        wl_pointer_destroy(wl->input->pointer);
+        wl->input->pointer = NULL;
     }
 }
 
@@ -669,8 +673,7 @@ static void create_display (struct vo_wayland_state *wl)
     assert(d->display);
     wl->display = d;
     d->registry = wl_display_get_registry(d->display);
-    wl_registry_add_listener(d->registry, &registry_listener,
-            wl);
+    wl_registry_add_listener(d->registry, &registry_listener, wl);
 
     wl_display_dispatch(d->display);
 
@@ -686,10 +689,12 @@ static void create_display (struct vo_wayland_state *wl)
 
 static void destroy_display (struct vo_wayland_state *wl)
 {
-    wl_surface_destroy(wl->display->cursor.surface);
 
     if (wl->display->cursor.theme)
         wl_cursor_theme_destroy(wl->display->cursor.theme);
+
+    if (wl->display->cursor.surface)
+        wl_surface_destroy(wl->display->cursor.surface);
 
     if (wl->display->shell)
         wl_shell_destroy(wl->display->shell);
@@ -700,11 +705,11 @@ static void destroy_display (struct vo_wayland_state *wl)
     if (wl->display->output)
         wl_output_destroy(wl->display->output);
 
+    wl_registry_destroy(wl->display->registry);
     wl_display_flush(wl->display->display);
     wl_display_disconnect(wl->display->display);
     vo_fs = VO_FALSE;
 
-    wl->display = NULL;
 }
 
 static void create_window (struct vo_wayland_state *wl)
@@ -732,7 +737,6 @@ static void destroy_window (struct vo_wayland_state *wl)
 
     wl_shell_surface_destroy(wl->window->shell_surface);
     wl_surface_destroy(wl->window->surface);
-    wl->window = NULL;
 }
 
 static void create_input (struct vo_wayland_state *wl)
@@ -741,10 +745,6 @@ static void create_input (struct vo_wayland_state *wl)
         return;
 
     wl->input = talloc_zero(wl, struct vo_wayland_input);
-
-    wl->input->repeat.key = 0;
-    wl->input->repeat.sym = 0;
-    wl->input->repeat.time = 0;
 
     wl->input->xkb.context = xkb_context_new(0);
     if (wl->input->xkb.context == NULL) {
@@ -755,11 +755,16 @@ static void create_input (struct vo_wayland_state *wl)
 
 static void destroy_input (struct vo_wayland_state *wl)
 {
+    if (wl->input->keyboard)
+        wl_keyboard_destroy(wl->input->keyboard);
+
+    if (wl->input->pointer)
+        wl_pointer_destroy(wl->input->pointer);
+
     if (wl->input->seat)
         wl_seat_destroy(wl->input->seat);
 
     xkb_context_unref(wl->input->xkb.context);
-    wl->input = NULL;
 }
 
 static void destroy_timers (struct vo_wayland_state *wl)
@@ -773,7 +778,7 @@ static void destroy_timers (struct vo_wayland_state *wl)
 
 int vo_wayland_init (struct vo *vo)
 {
-    vo->wayland = talloc_zero(vo, struct vo_wayland_state);
+    vo->wayland = talloc_zero(NULL, struct vo_wayland_state);
     struct vo_wayland_state *wl = vo->wayland;
     wl->vo = vo;
 
