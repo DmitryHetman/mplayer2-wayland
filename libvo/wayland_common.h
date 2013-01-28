@@ -66,8 +66,6 @@ struct vo_wayland_display {
     int mode_received;
     uint32_t output_width;
     uint32_t output_height;
-    uint32_t output_x;
-    uint32_t output_y;
 
     uint32_t formats;
     uint32_t mask;

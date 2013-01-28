@@ -115,9 +115,19 @@ static void output_handle_geometry (void *data, struct wl_output *wl_output,
         int32_t subpixel, const char *make, const char *model,
         int32_t transform)
 {
-    struct vo_wayland_display *d = data;
-    d->output_x = x;
-    d->output_y = y;
+    /* Ignore transforms for now */
+    switch (transform) {
+        case WL_OUTPUT_TRANSFORM_NORMAL:
+        case WL_OUTPUT_TRANSFORM_90:
+        case WL_OUTPUT_TRANSFORM_180:
+        case WL_OUTPUT_TRANSFORM_270:
+        case WL_OUTPUT_TRANSFORM_FLIPPED:
+        case WL_OUTPUT_TRANSFORM_FLIPPED_90:
+        case WL_OUTPUT_TRANSFORM_FLIPPED_180:
+        case WL_OUTPUT_TRANSFORM_FLIPPED_270:
+        default:
+            break;
+    }
 }
 
 static void output_handle_mode (void *data, struct wl_output *wl_output,
@@ -896,7 +906,5 @@ void vo_wayland_update_xinerama_info (struct vo *vo)
     opts->vo_screenheight = wl->display->output_height;
 
     aspect_save_screenres(vo, opts->vo_screenwidth, opts->vo_screenheight);
-    xinerama_x = wl->display->output_x;
-    xinerama_y = wl->display->output_y;
 }
 
