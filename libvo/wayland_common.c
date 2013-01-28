@@ -134,7 +134,7 @@ static void output_handle_mode (void *data, struct wl_output *wl_output,
         uint32_t flags, int32_t width, int32_t height, int32_t refresh)
 {
     struct vo_wayland_display *d = data;
-    if ((flags & WL_OUTPUT_MODE_PREFERRED) == WL_OUTPUT_MODE_PREFERRED) {
+    if (flags & WL_OUTPUT_MODE_PREFERRED) {
         d->output_height = height;
         d->output_width = width;
         d->mode_received = 1;
