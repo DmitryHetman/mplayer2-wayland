@@ -298,13 +298,21 @@ static void keyboard_handle_key(void *data, struct wl_keyboard *wl_keyboard,
         timerfd_settime(input->repeat.timer_fd, 0, &its, NULL);
     }
     else if (state == WL_KEYBOARD_KEY_STATE_PRESSED) {
-        input->repeat.sym = sym;
-        input->repeat.key = key;
-        input->repeat.time = time;
-        its.it_interval.tv_sec = 0;
-        its.it_interval.tv_nsec = 25 * 1000 * 1000;
-        its.it_value.tv_sec = 0;
-        its.it_value.tv_nsec = 400 * 1000 * 1000;
+        if (input->repeat.sym == sym) {
+            its.it_interval.tv_sec = 0;
+            its.it_interval.tv_nsec = 25 * 1000 * 1000;
+            its.it_value.tv_sec = 0;
+            its.it_value.tv_nsec = 100 * 1000 * 1000;
+        }
+        else {
+            input->repeat.sym = sym;
+            input->repeat.key = key;
+            input->repeat.time = time;
+            its.it_interval.tv_sec = 0;
+            its.it_interval.tv_nsec = 25 * 1000 * 1000;
+            its.it_value.tv_sec = 0;
+            its.it_value.tv_nsec = 400 * 1000 * 1000;
+        }
         timerfd_settime(input->repeat.timer_fd, 0, &its, NULL);
     }
 }
