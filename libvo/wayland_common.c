@@ -366,7 +366,7 @@ static void pointer_handle_motion(void *data, struct wl_pointer *pointer,
 
         its.it_interval.tv_sec = 1;
         its.it_interval.tv_nsec = 0;
-        its.it_value.tv_sec = 3;
+        its.it_value.tv_sec = 1;
         its.it_value.tv_nsec = 0;
         timerfd_settime(display->cursor.timer_fd, 0, &its, NULL);
     }
