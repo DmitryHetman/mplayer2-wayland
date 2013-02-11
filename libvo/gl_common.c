@@ -2465,6 +2465,9 @@ static void releaseGlContext_wayland(MPGLContext *ctx)
     eglMakeCurrent(egl_ctx->egl.dpy, NULL, NULL, EGL_NO_CONTEXT);
     eglDestroyContext(egl_ctx->egl.dpy, egl_ctx->egl.ctx);
     eglTerminate(egl_ctx->egl.dpy);
+    eglReleaseThread();
+    wl_egl_window_destroy(egl_ctx->egl_window);
+    egl_ctx->egl_window =NULL;
 }
 
 static void swapGlBuffers_wayland(MPGLContext *ctx)
